@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../home/athlete_main_screen.dart'; // Importamos la navegación del deportista
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
@@ -47,7 +48,14 @@ class RoleSelectionScreen extends StatelessWidget {
                 description: 'Únete a una escuela, inscríbete a eventos y gestiona tu historial deportivo.',
                 icon: Icons.skateboarding,
                 onTap: () {
-                  // Próximo paso: Navegación principal del deportista
+                  // Navegación principal eliminando el historial anterior
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AthleteMainScreen(),
+                    ),
+                    (route) => false,
+                  );
                 },
               ),
               
@@ -60,7 +68,7 @@ class RoleSelectionScreen extends StatelessWidget {
                 description: 'Crea o administra una escuela, gestiona deportistas y eventos.',
                 icon: Icons.sports_outlined,
                 onTap: () {
-                  // Próximo paso: Flujo de entrenador (crear escuela o vincularse)
+                  // Pendiente: Flujo de entrenador
                 },
               ),
             ],
