@@ -3,7 +3,6 @@ import 'providers/athlete_provider.dart';
 import 'package:provider/provider.dart';
 
 // Imports de tu proyecto
-import 'providers/athlete_provider.dart';
 import 'screens/home/athlete_main_screen.dart';
 
 void main() {
