@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../models/result_model.dart';
+import '../../providers/athlete_provider.dart';
 
 class AthleteHistoryTab extends StatelessWidget {
   const AthleteHistoryTab({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Escuchamos el estado global
+    final provider = context.watch<AthleteProvider>();
+
+    if (provider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final results = provider.results;
+
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24.0),
@@ -19,211 +31,155 @@ class AthleteHistoryTab extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Revisa tu desempeño en competencias anteriores',
+            'Tu trayectoria y logros en competencias anteriores',
             style: TextStyle(
               fontSize: 14,
               color: Color(0xFF6B7280),
             ),
           ),
           const SizedBox(height: 24),
-
-          // Resumen rápido
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFBFDBFE)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildSummaryStat('🥇', 'Oro', '4'),
-                _buildSummaryStat('🥈', 'Plata', '3'),
-                _buildSummaryStat('🥉', 'Bronce', '2'),
-              ],
-            ),
-          ),
           
-          const SizedBox(height: 24),
-
-          // Lista de resultados pasados
-          _buildResultCard(
-            title: 'Válida Nacional de Transición',
-            date: '10 May 2026',
-            modality: '200m Meta contra meta',
-            position: '1er Puesto',
-            time: '19.45s',
-            medalColor: const Color(0xFFFFD700),
-          ),
-          const SizedBox(height: 16),
-          _buildResultCard(
-            title: 'Campeonato Departamental',
-            date: '22 Mar 2026',
-            modality: 'Puntos + Eliminación',
-            position: '3er Puesto',
-            time: 'N/A',
-            medalColor: const Color(0xFFCD7F32),
-          ),
-          const SizedBox(height: 16),
-          _buildResultCard(
-            title: 'Festival Nacional Interclubes',
-            date: '15 Nov 2025',
-            modality: '100m Carriles',
-            position: '2do Puesto',
-            time: '10.82s',
-            medalColor: const Color(0xFFC0C0C0),
-          ),
-          const SizedBox(height: 16),
-          _buildResultCard(
-            title: 'Copa Región Caribe',
-            date: '04 Sep 2025',
-            modality: 'Prueba de Relevos',
-            position: '4to Puesto',
-            time: '1:45.30',
-            medalColor: Colors.transparent,
-            showMedal: false,
-          ),
+          if (results.isEmpty)
+            const Center(
+              child: Text(
+                'No hay resultados registrados aún.',
+                style: TextStyle(color: Color(0xFF6B7280)),
+              ),
+            ),
+            
+          // Iteramos sobre la lista de resultados del Provider
+          ...results.map((result) => Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: _buildResultCard(result),
+              )),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryStat(String emoji, String label, String count) {
-    return Column(
-      children: [
-        Text(emoji, style: const TextStyle(fontSize: 24)),
-        const SizedBox(height: 4),
-        Text(
-          count,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1E3A8A),
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF3B82F6),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _buildResultCard(ResultModel result) {
+    final formattedDate = "${result.date.day} / ${result.date.month} / ${result.date.year}";
+    
+    // Lógica para definir el color e ícono según la medalla
+    Color medalColor;
+    IconData medalIcon;
 
-  Widget _buildResultCard({
-    required String title,
-    required String date,
-    required String modality,
-    required String position,
-    required String time,
-    required Color medalColor,
-    bool showMedal = true,
-  }) {
+    switch (result.medalType) {
+      case MedalType.gold:
+        medalColor = const Color(0xFFFBBF24); // Amarillo / Oro
+        medalIcon = Icons.emoji_events;
+        break;
+      case MedalType.silver:
+        medalColor = const Color(0xFF9CA3AF); // Gris / Plata
+        medalIcon = Icons.emoji_events;
+        break;
+      case MedalType.bronze:
+        medalColor = const Color(0xFFB45309); // Naranja oscuro / Bronce
+        medalIcon = Icons.emoji_events;
+        break;
+      case MedalType.none:
+      default:
+        medalColor = const Color(0xFFE5E7EB); // Gris claro / Sin medalla
+        medalIcon = Icons.workspace_premium;
+        break;
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Círculo del trofeo/medalla
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: showMedal ? medalColor.withValues(alpha: 0.1) : const Color(0xFFF3F4F6),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Icon(
-                  showMedal ? Icons.emoji_events : Icons.sports_score,
-                  color: showMedal ? medalColor : const Color(0xFF9CA3AF),
-                  size: 24,
-                ),
-              ),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Círculo con el ícono de la medalla
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: result.showMedal ? medalColor.withValues(alpha: 0.15) : const Color(0xFFF9FAFB),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 16),
-            
-            // Detalles del resultado
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1F2937),
-                    ),
+            child: Icon(
+              medalIcon,
+              color: result.showMedal ? medalColor : const Color(0xFF9CA3AF),
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 16),
+          
+          // Información del resultado
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  result.title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1F2937),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    date,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF6B7280),
-                      fontWeight: FontWeight.w500,
-                    ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$formattedDate • ${result.modality}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF6B7280),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Divider(height: 1, color: Color(0xFFF3F4F6)),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Modalidad',
-                            style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-                          ),
-                          Text(
-                            modality,
-                            style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563)),
-                          ),
-                        ],
+                ),
+                const SizedBox(height: 12),
+                
+                // Etiquetas de Posición y Tiempo (si existe)
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            position,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: showMedal ? const Color(0xFF1F2937) : const Color(0xFF6B7280),
+                      child: Text(
+                        result.position,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF4B5563),
+                        ),
+                      ),
+                    ),
+                    if (result.time != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.timer_outlined, size: 12, color: Color(0xFF2563EB)),
+                            const SizedBox(width: 4),
+                            Text(
+                              result.time!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1E429F),
+                              ),
                             ),
-                          ),
-                          Text(
-                            time != 'N/A' ? '⏱ $time' : '--',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
