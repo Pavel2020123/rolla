@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../home/athlete_main_screen.dart';
-import '../coach/coach_main_screen.dart';
+import '../coach/coach_onboarding_screen.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -24,14 +24,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
     if (!mounted) return;
 
-    // Navegar según el rol
     if (role == 'coach') {
+      // El entrenador va al onboarding (crear/vincular/quedar libre)
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const CoachMainScreen()),
+        MaterialPageRoute(builder: (_) => const CoachOnboardingScreen()),
         (route) => false,
       );
     } else {
+      // El deportista va directo al home
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const AthleteMainScreen()),
@@ -82,7 +83,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   child: CircularProgressIndicator(color: Color(0xFF2563EB)),
                 )
               else ...[
-                // Tarjeta Deportista
                 _buildRoleCard(
                   title: 'Deportista',
                   description:
@@ -90,10 +90,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   icon: Icons.skateboarding,
                   onTap: () => _selectRole('athlete'),
                 ),
-
                 const SizedBox(height: 24),
-
-                // Tarjeta Entrenador
                 _buildRoleCard(
                   title: 'Entrenador',
                   description:

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 // Providers
 import 'providers/auth_provider.dart';
 import 'providers/athlete_provider.dart';
+import 'providers/school_provider.dart';
 
 // Screens
 import 'screens/auth/splash_screen.dart';
@@ -21,6 +22,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AthleteProvider()),
+        ChangeNotifierProvider(create: (_) => SchoolProvider()),
       ],
       child: MaterialApp(
         title: 'Rolla',
