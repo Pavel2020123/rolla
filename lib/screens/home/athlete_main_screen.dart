@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'athlete_home_tab.dart'; 
+import 'package:provider/provider.dart';
+import '../../providers/athlete_provider.dart';
+import 'athlete_home_tab.dart';
 import 'athlete_history_tab.dart';
-import 'athlete_events_tab.dart'; // Añade esta línea
-import 'athlete_profile_tab.dart'; // Importamos la nueva pestaña de perfil
+import 'athlete_events_tab.dart';
+import 'athlete_profile_tab.dart';
 
 class AthleteMainScreen extends StatefulWidget {
   const AthleteMainScreen({super.key});
@@ -14,14 +16,22 @@ class AthleteMainScreen extends StatefulWidget {
 class _AthleteMainScreenState extends State<AthleteMainScreen> {
   int _selectedIndex = 0;
 
-  // Actualizamos la cuarta vista con nuestro nuevo componente
   final List<Widget> _screens = [
     const AthleteHomeTab(),
     const AthleteEventsTab(),
-    const AthleteHistoryTab(), // Añadimos la pestaña de Historial aquí
+    const AthleteHistoryTab(),
     const AthleteProfileTab(),
   ];
-  
+
+  @override
+  void initState() {
+    super.initState();
+    // 🔥 ESTA ES LA LÍNEA CLAVE: cargar los datos al entrar
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AthleteProvider>(context, listen: false).fetchAllData();
+    });
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;

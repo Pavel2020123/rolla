@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/athlete_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../auth/splash_screen.dart';
 import '../profile/edit_profile_screen.dart';
 
 class AthleteProfileTab extends StatelessWidget {
@@ -8,144 +10,193 @@ class AthleteProfileTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Escuchamos el estado global
-    final provider = context.watch<AthleteProvider>();
+    final athleteProvider = Provider.of<AthleteProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+    final athlete = athleteProvider.athlete;
 
-    if (provider.isLoading) {
+    if (athleteProvider.isLoading) {
       return const Center(child: CircularProgressIndicator());
-    }
-
-    final athlete = provider.athlete;
-
-    if (athlete == null) {
-      return const Center(child: Text('No hay datos del perfil'));
     }
 
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 16),
-            // Avatar dinámico con iniciales
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: const Color(0xFFEFF6FF),
-              child: Text(
-                athlete.initials,
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2563EB),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Nombre completo y rol
-            Text(
-              athlete.fullName,
-              style: const TextStyle(
+            const Text(
+              'Perfil',
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF1F2937),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              athlete.role,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Color(0xFF6B7280),
+            const SizedBox(height: 24),
+            if (athlete != null) ...[
+              Center(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(40),
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        size: 40,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      '${athlete.firstName} ${athlete.lastName}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      athlete.schoolName,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        athlete.category,
+                        style: const TextStyle(
+                          color: Color(0xFF2563EB),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 32),
-
-            // Tarjeta de detalles
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: Column(
-                children: [
-                  _buildProfileRow(Icons.school_outlined, 'Club / Escuela', athlete.schoolName),
-                  const Divider(height: 24, color: Color(0xFFF3F4F6)),
-                  _buildProfileRow(Icons.category_outlined, 'Categoría', athlete.category),
-                  const Divider(height: 24, color: Color(0xFFF3F4F6)),
-                  _buildProfileRow(Icons.trending_up, 'Nivel', athlete.level),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-            
-            // Botón de editar perfil 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
+              const SizedBox(height: 32),
+              _buildProfileOption(
+                icon: Icons.edit_outlined,
+                title: 'Editar perfil',
+                onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const EditProfileScreen(),
+                    ),
                   );
                 },
-                icon: const Icon(Icons.edit, color: Colors.white),
-                label: const Text(
-                  'Editar Perfil',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+              ),
+              _buildProfileOption(
+                icon: Icons.school_outlined,
+                title: 'Mi escuela',
+                onTap: () {},
+              ),
+              _buildProfileOption(
+                icon: Icons.history_outlined,
+                title: 'Historial de escuelas',
+                onTap: () {},
+              ),
+              _buildProfileOption(
+                icon: Icons.settings_outlined,
+                title: 'Configuración',
+                onTap: () {},
+              ),
+              _buildProfileOption(
+                icon: Icons.help_outline,
+                title: 'Ayuda y soporte',
+                onTap: () {},
+              ),
+              _buildProfileOption(
+                icon: Icons.logout,
+                title: 'Cerrar sesión',
+                textColor: Colors.red,
+                iconColor: Colors.red,
+                onTap: () => _showLogoutDialog(context),
+              ),
+            ] else ...[
+              const Center(
+                child: Text(
+                  'No se pudo cargar el perfil',
+                  style: TextStyle(color: Color(0xFF6B7280)),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  // Widget auxiliar para mantener el código limpio
-  Widget _buildProfileRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF9FAFB),
-            borderRadius: BorderRadius.circular(8),
+  Widget _buildProfileOption({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color? textColor,
+    Color? iconColor,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: iconColor ?? const Color(0xFF6B7280)),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: textColor ?? const Color(0xFF1F2937),
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: const Icon(Icons.arrow_forward_ios,
+          size: 16, color: Color(0xFF9CA3AF)),
+      onTap: onTap,
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
           ),
-          child: Icon(icon, size: 20, color: const Color(0xFF6B7280)),
-        ),
-        const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF9CA3AF),
-              ),
+          TextButton(
+            onPressed: () async {
+              final authProvider =
+                  Provider.of<AuthProvider>(context, listen: false);
+              await authProvider.logout();
+
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SplashScreen()),
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text(
+              'Cerrar sesión',
+              style: TextStyle(color: Colors.red),
             ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF374151),
-              ),
-            ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }

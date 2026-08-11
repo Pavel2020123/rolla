@@ -1,13 +1,78 @@
 import 'package:flutter/material.dart';
-import 'register_screen.dart'; // Importamos la pantalla de Registro
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../home/athlete_main_screen.dart';
+import '../coach/coach_main_screen.dart';
+import 'register_screen.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _showMessage('Por favor completa todos los campos');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.login(email: email, password: password);
+
+    setState(() => _isLoading = false);
+
+    if (!mounted) return;
+
+    if (success) {
+      // Navegar según el rol
+      if (authProvider.role == 'coach') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const CoachMainScreen()),
+          (route) => false,
+        );
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const AthleteMainScreen()),
+          (route) => false,
+        );
+      }
+    } else {
+      _showMessage('Correo o contraseña incorrectos');
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // background theme color
+      backgroundColor: const Color(0xFFF5F7FA),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -15,14 +80,14 @@ class LoginScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 60),
-              
-              // Logo o Icono simplificado
+
+              // Logo
               Center(
                 child: Container(
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2563EB), // primary color
+                    color: const Color(0xFF2563EB),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Icon(
@@ -32,10 +97,9 @@ class LoginScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 32),
-              
-              // Textos de bienvenida
+
               const Text(
                 'Bienvenido a Rolla',
                 textAlign: TextAlign.center,
@@ -54,34 +118,47 @@ class LoginScreen extends StatelessWidget {
                   color: Color(0xFF6B7280),
                 ),
               ),
-              
+
               const SizedBox(height: 48),
-              
-              // Formulario
-              const TextField(
-                decoration: InputDecoration(
+
+              // Email
+              TextField(
+                controller: _emailController,
+                decoration: const InputDecoration(
                   labelText: 'Correo electrónico',
                   hintText: 'ejemplo@correo.com',
                   prefixIcon: Icon(Icons.email_outlined),
                 ),
                 keyboardType: TextInputType.emailAddress,
               ),
-              
+
               const SizedBox(height: 16),
-              
-              const TextField(
+
+              // Password
+              TextField(
+                controller: _passwordController,
                 decoration: InputDecoration(
                   labelText: 'Contraseña',
                   hintText: 'Tu contraseña',
-                  prefixIcon: Icon(Icons.lock_outline),
-                  suffixIcon: Icon(Icons.visibility_off_outlined),
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
                 ),
-                obscureText: true,
+                obscureText: _obscurePassword,
               ),
-              
+
               const SizedBox(height: 12),
-              
-              // Olvidaste tu contraseña
+
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -92,21 +169,40 @@ class LoginScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
-              // Botón de Ingresar
+
+              // Botón Ingresar
               ElevatedButton(
-                onPressed: () {},
-                child: const Text(
-                  'Ingresar',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                onPressed: _isLoading ? null : _login,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Ingresar',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
-              
+
               const SizedBox(height: 24),
-              
-              // Ir al registro
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

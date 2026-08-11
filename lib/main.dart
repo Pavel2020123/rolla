@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
-import 'providers/athlete_provider.dart';
 import 'package:provider/provider.dart';
 
-// Imports de tu proyecto
-import 'screens/home/athlete_main_screen.dart';
+// Providers
+import 'providers/auth_provider.dart';
+import 'providers/athlete_provider.dart';
+
+// Screens
+import 'screens/auth/splash_screen.dart';
 
 void main() {
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => AthleteProvider()..fetchAllData(),
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -19,14 +17,21 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'App Deportiva',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
-        useMaterial3: true,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => AthleteProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Rolla',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
+          useMaterial3: true,
+          scaffoldBackgroundColor: const Color(0xFFF5F7FA),
+        ),
+        home: const SplashScreen(),
       ),
-      home: const AthleteMainScreen(),
     );
   }
 }

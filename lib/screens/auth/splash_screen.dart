@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'login_screen.dart'; // Importamos la pantalla de Login
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../home/athlete_main_screen.dart';
+import '../coach/coach_main_screen.dart';
+import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,17 +17,40 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Navegación automática después de 2 segundos
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      
+    _checkSession();
+  }
+
+  Future<void> _checkSession() async {
+    // Esperar 2 segundos para mostrar el splash
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final hasSession = await authProvider.checkSession();
+
+    if (!mounted) return;
+
+    if (hasSession) {
+      // Hay sesión activa, ir al panel correspondiente
+      if (authProvider.role == 'coach') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const CoachMainScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AthleteMainScreen()),
+        );
+      }
+    } else {
+      // No hay sesión, ir al login
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => const LoginScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
-    });
+    }
   }
 
   @override
@@ -64,6 +91,11 @@ class _SplashScreenState extends State<SplashScreen> {
                 color: Color(0xFF6B7280),
                 fontSize: 14,
               ),
+            ),
+            const SizedBox(height: 40),
+            const CircularProgressIndicator(
+              color: Color(0xFF2563EB),
+              strokeWidth: 2,
             ),
           ],
         ),

@@ -1,8 +1,44 @@
 import 'package:flutter/material.dart';
-import '../home/athlete_main_screen.dart'; // Importamos la navegación del deportista
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../home/athlete_main_screen.dart';
+import '../coach/coach_main_screen.dart';
 
-class RoleSelectionScreen extends StatelessWidget {
+class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
+
+  @override
+  State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
+}
+
+class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
+  bool _isLoading = false;
+
+  Future<void> _selectRole(String role) async {
+    setState(() => _isLoading = true);
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.setRole(role);
+
+    setState(() => _isLoading = false);
+
+    if (!mounted) return;
+
+    // Navegar según el rol
+    if (role == 'coach') {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const CoachMainScreen()),
+        (route) => false,
+      );
+    } else {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const AthleteMainScreen()),
+        (route) => false,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,37 +76,32 @@ class RoleSelectionScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 48),
-              
-              // Tarjeta Deportista
-              _buildRoleCard(
-                context,
-                title: 'Deportista',
-                description: 'Únete a una escuela, inscríbete a eventos y gestiona tu historial deportivo.',
-                icon: Icons.skateboarding,
-                onTap: () {
-                  // Navegación principal eliminando el historial anterior
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AthleteMainScreen(),
-                    ),
-                    (route) => false,
-                  );
-                },
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Tarjeta Entrenador
-              _buildRoleCard(
-                context,
-                title: 'Entrenador',
-                description: 'Crea o administra una escuela, gestiona deportistas y eventos.',
-                icon: Icons.sports_outlined,
-                onTap: () {
-                  // Pendiente: Flujo de entrenador
-                },
-              ),
+
+              if (_isLoading)
+                const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF2563EB)),
+                )
+              else ...[
+                // Tarjeta Deportista
+                _buildRoleCard(
+                  title: 'Deportista',
+                  description:
+                      'Únete a una escuela, inscríbete a eventos y gestiona tu historial deportivo.',
+                  icon: Icons.skateboarding,
+                  onTap: () => _selectRole('athlete'),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Tarjeta Entrenador
+                _buildRoleCard(
+                  title: 'Entrenador',
+                  description:
+                      'Crea o administra una escuela, gestiona deportistas y eventos.',
+                  icon: Icons.sports_outlined,
+                  onTap: () => _selectRole('coach'),
+                ),
+              ],
             ],
           ),
         ),
@@ -78,8 +109,7 @@ class RoleSelectionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRoleCard(
-    BuildContext context, {
+  Widget _buildRoleCard({
     required String title,
     required String description,
     required IconData icon,
