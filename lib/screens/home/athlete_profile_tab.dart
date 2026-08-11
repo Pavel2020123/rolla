@@ -11,6 +11,7 @@ class AthleteProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final athleteProvider = Provider.of<AthleteProvider>(context);
+    // ignore: unused_local_variable
     final authProvider = Provider.of<AuthProvider>(context);
     final athlete = athleteProvider.athlete;
 

@@ -78,6 +78,7 @@ class AthleteHistoryTab extends StatelessWidget {
         medalIcon = Icons.emoji_events;
         break;
       case MedalType.none:
+      // ignore: unreachable_switch_default
       default:
         medalColor = const Color(0xFFE5E7EB); // Gris claro / Sin medalla
         medalIcon = Icons.workspace_premium;
