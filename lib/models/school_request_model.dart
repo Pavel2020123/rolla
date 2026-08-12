@@ -2,6 +2,7 @@ class SchoolRequestModel {
   final String id;
   final String athleteId;
   final String athleteName;
+  final String athleteEmail; // NUEVO: para encontrar al usuario y asignarle escuela
   final String schoolId;
   final String schoolName;
   final String status; // 'pending', 'accepted', 'rejected'
@@ -12,6 +13,7 @@ class SchoolRequestModel {
     required this.id,
     required this.athleteId,
     required this.athleteName,
+    required this.athleteEmail,
     required this.schoolId,
     required this.schoolName,
     this.status = 'pending',
@@ -24,6 +26,7 @@ class SchoolRequestModel {
       id: json['id'],
       athleteId: json['athleteId'],
       athleteName: json['athleteName'],
+      athleteEmail: json['athleteEmail'] ?? '',
       schoolId: json['schoolId'],
       schoolName: json['schoolName'],
       status: json['status'],
@@ -39,6 +42,7 @@ class SchoolRequestModel {
       'id': id,
       'athleteId': athleteId,
       'athleteName': athleteName,
+      'athleteEmail': athleteEmail,
       'schoolId': schoolId,
       'schoolName': schoolName,
       'status': status,

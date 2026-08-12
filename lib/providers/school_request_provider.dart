@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/school_request_model.dart';
+import 'auth_provider.dart';
 
 class SchoolRequestProvider extends ChangeNotifier {
   List<SchoolRequestModel> _requests = [];
@@ -13,7 +14,6 @@ class SchoolRequestProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   int get pendingCount => pendingRequests.length;
 
-  /// Cargar todas las solicitudes del almacenamiento
   Future<void> loadRequests() async {
     _isLoading = true;
     notifyListeners();
@@ -33,15 +33,14 @@ class SchoolRequestProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Enviar solicitud de ingreso (deportista)
   Future<bool> sendRequest({
     required String athleteId,
     required String athleteName,
+    required String athleteEmail, // NUEVO
     required String schoolId,
     required String schoolName,
   }) async {
     try {
-      // Verificar que no haya una solicitud pendiente para la misma escuela
       final existing = _requests.firstWhere(
         (r) =>
             r.athleteId == athleteId &&
@@ -51,6 +50,7 @@ class SchoolRequestProvider extends ChangeNotifier {
           id: '',
           athleteId: '',
           athleteName: '',
+          athleteEmail: '',
           schoolId: '',
           schoolName: '',
           createdAt: DateTime.now(),
@@ -58,13 +58,14 @@ class SchoolRequestProvider extends ChangeNotifier {
       );
 
       if (existing.id.isNotEmpty) {
-        return false; // Ya hay solicitud pendiente
+        return false;
       }
 
       final newRequest = SchoolRequestModel(
         id: 'req_${DateTime.now().millisecondsSinceEpoch}',
         athleteId: athleteId,
         athleteName: athleteName,
+        athleteEmail: athleteEmail,
         schoolId: schoolId,
         schoolName: schoolName,
         status: 'pending',
@@ -81,18 +82,29 @@ class SchoolRequestProvider extends ChangeNotifier {
     }
   }
 
-  /// Aceptar solicitud (entrenador)
   Future<void> acceptRequest(String requestId) async {
     final index = _requests.indexWhere((r) => r.id == requestId);
     if (index != -1) {
+      final request = _requests[index];
+
+      // NUEVO: Asignar escuela al deportista en su cuenta
+      if (request.athleteEmail.isNotEmpty) {
+        await AuthProvider.assignSchoolToUser(
+          request.athleteEmail,
+          request.schoolId,
+          request.schoolName,
+        );
+      }
+
       _requests[index] = SchoolRequestModel(
-        id: _requests[index].id,
-        athleteId: _requests[index].athleteId,
-        athleteName: _requests[index].athleteName,
-        schoolId: _requests[index].schoolId,
-        schoolName: _requests[index].schoolName,
+        id: request.id,
+        athleteId: request.athleteId,
+        athleteName: request.athleteName,
+        athleteEmail: request.athleteEmail,
+        schoolId: request.schoolId,
+        schoolName: request.schoolName,
         status: 'accepted',
-        createdAt: _requests[index].createdAt,
+        createdAt: request.createdAt,
         respondedAt: DateTime.now(),
       );
       await _saveRequests();
@@ -100,18 +112,19 @@ class SchoolRequestProvider extends ChangeNotifier {
     }
   }
 
-  /// Rechazar solicitud (entrenador)
   Future<void> rejectRequest(String requestId) async {
     final index = _requests.indexWhere((r) => r.id == requestId);
     if (index != -1) {
+      final request = _requests[index];
       _requests[index] = SchoolRequestModel(
-        id: _requests[index].id,
-        athleteId: _requests[index].athleteId,
-        athleteName: _requests[index].athleteName,
-        schoolId: _requests[index].schoolId,
-        schoolName: _requests[index].schoolName,
+        id: request.id,
+        athleteId: request.athleteId,
+        athleteName: request.athleteName,
+        athleteEmail: request.athleteEmail,
+        schoolId: request.schoolId,
+        schoolName: request.schoolName,
         status: 'rejected',
-        createdAt: _requests[index].createdAt,
+        createdAt: request.createdAt,
         respondedAt: DateTime.now(),
       );
       await _saveRequests();
@@ -119,35 +132,25 @@ class SchoolRequestProvider extends ChangeNotifier {
     }
   }
 
-  /// Obtener solicitudes de un deportista específico
-  List<SchoolRequestModel> getRequestsByAthlete(String athleteId) {
-    return _requests.where((r) => r.athleteId == athleteId).toList();
-  }
-
-  /// Obtener solicitudes pendientes para una escuela específica
   List<SchoolRequestModel> getPendingRequestsForSchool(String schoolId) {
     return _requests
         .where((r) => r.schoolId == schoolId && r.status == 'pending')
         .toList();
   }
 
-  /// Verificar si un deportista tiene solicitud pendiente para una escuela
+    /// Obtener deportistas aceptados en una escuela
+  List<SchoolRequestModel> getAcceptedAthletesForSchool(String schoolId) {
+    return _requests
+        .where((r) => r.schoolId == schoolId && r.status == 'accepted')
+        .toList();
+  }
+
   bool hasPendingRequest(String athleteId, String schoolId) {
     return _requests.any(
       (r) =>
           r.athleteId == athleteId &&
           r.schoolId == schoolId &&
           r.status == 'pending',
-    );
-  }
-
-  /// Verificar si un deportista fue aceptado en una escuela
-  bool isAcceptedInSchool(String athleteId, String schoolId) {
-    return _requests.any(
-      (r) =>
-          r.athleteId == athleteId &&
-          r.schoolId == schoolId &&
-          r.status == 'accepted',
     );
   }
 

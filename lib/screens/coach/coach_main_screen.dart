@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import '../../models/school_request_model.dart';
 import 'package:provider/provider.dart';
+import 'package:rolla/providers/school_request_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/school_provider.dart';
 import '../auth/splash_screen.dart';
+import 'create_event_screen.dart';
 import 'create_school_screen.dart';
+import 'school_requests_screen.dart';
 import 'join_school_screen.dart';
 
 class CoachMainScreen extends StatefulWidget {
@@ -250,14 +254,22 @@ class _CoachHomeTab extends StatelessWidget {
               const SizedBox(height: 24),
             ] else ...[
               // Estado: CON ESCUELA → Tarjetas de resumen
-              Row(
+                            Row(
                 children: [
                   Expanded(
-                    child: _buildStatCard(
-                      title: 'Deportistas',
-                      value: '0',
-                      icon: Icons.people,
-                      color: const Color(0xFF2563EB),
+                    child: Consumer<SchoolRequestProvider>(
+                      builder: (context, reqProvider, child) {
+                        final schoolId = schoolProvider.school?.id ?? '';
+                        final count = schoolId.isNotEmpty
+                            ? reqProvider.getAcceptedAthletesForSchool(schoolId).length
+                            : 0;
+                        return _buildStatCard(
+                          title: 'Deportistas',
+                          value: count.toString(),
+                          icon: Icons.people,
+                          color: const Color(0xFF2563EB),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -296,7 +308,7 @@ class _CoachHomeTab extends StatelessWidget {
               const SizedBox(height: 32),
             ],
 
-            const Text(
+                        const Text(
               'Accesos rápidos',
               style: TextStyle(
                 fontSize: 18,
@@ -311,7 +323,14 @@ class _CoachHomeTab extends StatelessWidget {
                 title: 'Crear Evento',
                 subtitle: 'Organiza un nuevo evento deportivo',
                 icon: Icons.add_circle_outline,
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CreateEventScreen(),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 12),
               _buildQuickActionCard(
@@ -319,6 +338,29 @@ class _CoachHomeTab extends StatelessWidget {
                 subtitle: 'Gestiona tus deportistas',
                 icon: Icons.people_outline,
                 onTap: () {},
+              ),
+              const SizedBox(height: 12),
+              // NUEVO: Acceso a solicitudes con badge
+              Consumer<SchoolRequestProvider>(
+                builder: (context, reqProvider, child) {
+                  final pendingCount = reqProvider.pendingCount;
+                  return _buildQuickActionCard(
+                    title: 'Solicitudes de Ingreso',
+                    subtitle: pendingCount > 0
+                        ? '$pendingCount solicitud${pendingCount == 1 ? '' : 'es'} pendiente${pendingCount == 1 ? '' : 's'}'
+                        : 'Ver solicitudes de deportistas',
+                    icon: Icons.swap_horiz,
+                    badge: pendingCount > 0 ? pendingCount.toString() : null,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SchoolRequestsScreen(),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ] else ...[
               _buildQuickActionCard(
@@ -401,10 +443,11 @@ class _CoachHomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActionCard({
+    Widget _buildQuickActionCard({
     required String title,
     required String subtitle,
     required IconData icon,
+    String? badge,
     required VoidCallback onTap,
   }) {
     return InkWell(
@@ -419,13 +462,42 @@ class _CoachHomeTab extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: const Color(0xFF2563EB)),
+            Stack(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: const Color(0xFF2563EB)),
+                ),
+                if (badge != null)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEF4444),
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: Text(
+                        badge,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -663,13 +735,33 @@ class _CoachSchoolTab extends StatelessWidget {
 // ============================================================
 // PESTAÑA: DEPORTISTAS
 // ============================================================
-class _CoachAthletesTab extends StatelessWidget {
+class _CoachAthletesTab extends StatefulWidget {
   const _CoachAthletesTab();
+
+  @override
+  State<_CoachAthletesTab> createState() => _CoachAthletesTabState();
+}
+
+class _CoachAthletesTabState extends State<_CoachAthletesTab> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<SchoolRequestProvider>(context, listen: false).loadRequests();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final schoolProvider = Provider.of<SchoolProvider>(context);
+    final requestProvider = Provider.of<SchoolRequestProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+
     final hasSchool = schoolProvider.hasSchool;
+    final schoolId = schoolProvider.school?.id ?? authProvider.schoolId ?? '';
+    final acceptedAthletes = schoolId.isNotEmpty
+        ? requestProvider.getAcceptedAthletesForSchool(schoolId)
+        : <SchoolRequestModel>[];
 
     return SafeArea(
       child: Padding(
@@ -688,14 +780,14 @@ class _CoachAthletesTab extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               hasSchool
-                  ? 'Gestiona los deportistas de tu escuela'
+                  ? '${acceptedAthletes.length} deportista${acceptedAthletes.length == 1 ? '' : 's'} en tu escuela'
                   : 'Primero necesitas tener una escuela',
               style: const TextStyle(
                 fontSize: 16,
                 color: Color(0xFF6B7280),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             if (!hasSchool)
               Center(
                 child: Column(
@@ -728,7 +820,7 @@ class _CoachAthletesTab extends StatelessWidget {
                   ],
                 ),
               )
-            else
+            else if (acceptedAthletes.isEmpty)
               Center(
                 child: Column(
                   children: [
@@ -739,23 +831,73 @@ class _CoachAthletesTab extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      'No hay deportistas registrados',
+                      'No hay deportistas en tu escuela',
                       style: TextStyle(
                         color: Color(0xFF9CA3AF),
                         fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.add),
-                      label: const Text('Agregar deportista'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
-                        foregroundColor: Colors.white,
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Los deportistas aparecerán aquí cuando aceptes sus solicitudes de ingreso.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Color(0xFF9CA3AF),
+                        fontSize: 14,
                       ),
                     ),
                   ],
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  itemCount: acceptedAthletes.length,
+                  itemBuilder: (context, index) {
+                    final athlete = acceptedAthletes[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListTile(
+                        leading: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            color: Color(0xFF2563EB),
+                          ),
+                        ),
+                        title: Text(
+                          athlete.athleteName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1F2937),
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Deportista activo',
+                          style: TextStyle(
+                            color: Color(0xFF10B981),
+                            fontSize: 13,
+                          ),
+                        ),
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: Color(0xFF9CA3AF),
+                        ),
+                        onTap: () {
+                          // Aquí podremos ver el perfil del deportista luego
+                        },
+                      ),
+                    );
+                  },
                 ),
               ),
           ],

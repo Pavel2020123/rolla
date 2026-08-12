@@ -55,23 +55,16 @@ class AthleteProvider extends ChangeNotifier {
   }
 
   /// Ejemplo de acción global: Inscribirse/desinscribirse a un evento
-  void toggleEventRegistration(String eventId) {
+    void toggleEventRegistration(String eventId) {
     final index = _events.indexWhere((e) => e.id == eventId);
     if (index != -1) {
       final currentEvent = _events[index];
-      _events[index] = EventModel(
-        id: currentEvent.id,
-        title: currentEvent.title,
-        date: currentEvent.date,
-        location: currentEvent.location,
-        category: currentEvent.category,
+      _events[index] = currentEvent.copyWith(
         status: !currentEvent.isRegistered ? 'Inscrito' : 'Inscripciones Abiertas',
         isRegistered: !currentEvent.isRegistered,
       );
 
       notifyListeners();
-
-      // Guardamos la lista actualizada de eventos en el almacenamiento local
       _saveEventsToCache();
     }
   }

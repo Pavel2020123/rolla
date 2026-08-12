@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/school_provider.dart';
 import '../../providers/school_request_provider.dart';
-import '../../models/school_model.dart';
 
 class FindSchoolScreen extends StatefulWidget {
   const FindSchoolScreen({super.key});
@@ -14,13 +12,11 @@ class FindSchoolScreen extends StatefulWidget {
 
 class _FindSchoolScreenState extends State<FindSchoolScreen> {
   final _searchController = TextEditingController();
-  bool _isSearching = false;
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    // Cargar escuelas disponibles (mock por ahora)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<SchoolRequestProvider>(context, listen: false).loadRequests();
     });
@@ -32,8 +28,6 @@ class _FindSchoolScreenState extends State<FindSchoolScreen> {
     super.dispose();
   }
 
-  /// Escuelas mock disponibles para unirse
-  /// En el futuro esto vendrá del backend
   List<Map<String, String>> get _availableSchools => [
         {
           'id': 'sch_demo_001',
@@ -77,8 +71,9 @@ class _FindSchoolScreenState extends State<FindSchoolScreen> {
 
     final athleteId = authProvider.user?['id'] ?? '';
     final athleteName = authProvider.user?['fullName'] ?? 'Deportista';
+    final athleteEmail = authProvider.user?['email'] ?? '';
 
-    if (athleteId.isEmpty) {
+    if (athleteId.isEmpty || athleteEmail.isEmpty) {
       _showMessage('Error: no se pudo identificar al deportista');
       return;
     }
@@ -86,6 +81,7 @@ class _FindSchoolScreenState extends State<FindSchoolScreen> {
     final success = await requestProvider.sendRequest(
       athleteId: athleteId,
       athleteName: athleteName,
+      athleteEmail: athleteEmail, // NUEVO
       schoolId: school['id']!,
       schoolName: school['name']!,
     );
@@ -128,16 +124,11 @@ class _FindSchoolScreenState extends State<FindSchoolScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Barra de búsqueda
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextField(
                 controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
+                onChanged: (value) => setState(() => _searchQuery = value),
                 decoration: InputDecoration(
                   hintText: 'Buscar por nombre o ciudad...',
                   prefixIcon: const Icon(Icons.search),
@@ -146,9 +137,7 @@ class _FindSchoolScreenState extends State<FindSchoolScreen> {
                           icon: const Icon(Icons.clear),
                           onPressed: () {
                             _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                            });
+                            setState(() => _searchQuery = '');
                           },
                         )
                       : null,
@@ -161,8 +150,6 @@ class _FindSchoolScreenState extends State<FindSchoolScreen> {
                 ),
               ),
             ),
-
-            // Lista de escuelas
             Expanded(
               child: _filteredSchools.isEmpty
                   ? const Center(

@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rolla/screens/athletes/find_school_screen.dart';
 import '../../providers/athlete_provider.dart';
+import '../../providers/auth_provider.dart';
 
 class AthleteHomeTab extends StatelessWidget {
   const AthleteHomeTab({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Escuchamos el estado global del deportista
     final athleteProvider = context.watch<AthleteProvider>();
+    final authProvider = context.watch<AuthProvider>();
 
-    // Estado de carga mientras el MockService responde
     if (athleteProvider.isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     final athlete = athleteProvider.athlete;
     final events = athleteProvider.events;
+    final hasSchool = authProvider.hasSchool;
 
     if (athlete == null) {
       return const Center(child: Text('No se encontraron datos del deportista.'));
@@ -30,7 +30,7 @@ class AthleteHomeTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Saludo personalizado con datos del Provider
+            // Saludo
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -47,7 +47,9 @@ class AthleteHomeTab extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      athlete.schoolName,
+                      hasSchool
+                          ? (authProvider.schoolName ?? 'Sin escuela')
+                          : 'Sin escuela asignada',
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF6B7280),
@@ -70,7 +72,63 @@ class AthleteHomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Tarjeta de Resumen con estadísticas dinámicas
+            // Si NO tiene escuela, mostrar alerta + botón
+            if (!hasSchool) ...[
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFFCD34D)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Color(0xFFD97706)),
+                        SizedBox(width: 8),
+                        Text(
+                          'No perteneces a ninguna escuela',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF92400E),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Para inscribirte a eventos y gestionar tu perfil deportivo, necesitas pertenecer a una escuela.',
+                      style: TextStyle(color: Color(0xFFA16207)),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const FindSchoolScreen(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.search, size: 18),
+                        label: const Text('Buscar escuela'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // Resumen de temporada
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -102,7 +160,7 @@ class AthleteHomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // Próximo evento dinámico
+            // Próximo evento
             const Text(
               'Próximo Evento',
               style: TextStyle(
@@ -158,7 +216,10 @@ class AthleteHomeTab extends StatelessWidget {
                 ),
               ),
             ] else ...[
-              const Text('No hay eventos programados.', style: TextStyle(color: Color(0xFF6B7280))),
+              const Text(
+                'No hay eventos programados.',
+                style: TextStyle(color: Color(0xFF6B7280)),
+              ),
             ],
           ],
         ),

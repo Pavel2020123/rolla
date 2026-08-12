@@ -3,18 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthProvider extends ChangeNotifier {
-  // Usuario actual en sesión
   Map<String, dynamic>? _user;
-  String? _role; // 'athlete' o 'coach'
+  String? _role;
   bool _isLoading = false;
 
-  // Getters
   Map<String, dynamic>? get user => _user;
   String? get role => _role;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _user != null;
 
-  /// Verificar si hay sesión activa al iniciar la app
+  // NUEVO: datos de escuela del usuario actual
+  String? get schoolId => _user?['schoolId'];
+  String? get schoolName => _user?['schoolName'];
+  bool get hasSchool =>
+      _user?['schoolId'] != null && (_user?['schoolId'] as String?)?.isNotEmpty == true;
+
   Future<bool> checkSession() async {
     _isLoading = true;
     notifyListeners();
@@ -40,7 +43,6 @@ class AuthProvider extends ChangeNotifier {
     return false;
   }
 
-  /// Registrar un nuevo usuario
   Future<bool> register({
     required String fullName,
     required String email,
@@ -51,28 +53,24 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-
-      // Verificar si el correo ya existe
       final String? existingUser = prefs.getString('rolla_user_$email');
       if (existingUser != null) {
         _isLoading = false;
         notifyListeners();
-        return false; // Usuario ya existe
+        return false;
       }
 
-      // Crear usuario
       final newUser = {
         'id': 'usr_${DateTime.now().millisecondsSinceEpoch}',
         'fullName': fullName,
         'email': email,
-        'password': password, // En producción: hashear
+        'password': password,
         'createdAt': DateTime.now().toIso8601String(),
+        'schoolId': null,
+        'schoolName': null,
       };
 
-      // Guardar usuario
       await prefs.setString('rolla_user_$email', jsonEncode(newUser));
-
-      // Guardar como usuario actual (pero sin rol aún)
       await prefs.setString('rolla_current_email', email);
 
       _isLoading = false;
@@ -86,23 +84,18 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Asignar rol después del registro
   Future<void> setRole(String role) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final String? email = prefs.getString('rolla_current_email');
 
       if (email != null) {
-        // Obtener el usuario guardado
         final String? userData = prefs.getString('rolla_user_$email');
         if (userData != null) {
           final user = jsonDecode(userData);
           user['role'] = role;
 
-          // Actualizar usuario
           await prefs.setString('rolla_user_$email', jsonEncode(user));
-
-          // Establecer sesión activa
           _user = user;
           _role = role;
 
@@ -116,7 +109,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Iniciar sesión
   Future<bool> login({
     required String email,
     required String password,
@@ -126,25 +118,21 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-
-      // Buscar usuario
       final String? userData = prefs.getString('rolla_user_$email');
       if (userData == null) {
         _isLoading = false;
         notifyListeners();
-        return false; // Usuario no existe
+        return false;
       }
 
       final user = jsonDecode(userData);
 
-      // Verificar contraseña
       if (user['password'] != password) {
         _isLoading = false;
         notifyListeners();
-        return false; // Contraseña incorrecta
+        return false;
       }
 
-      // Establecer sesión
       _user = user;
       _role = user['role'];
 
@@ -163,7 +151,74 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Cerrar sesión
+  /// Asignar escuela al usuario actual
+  Future<void> assignSchool(String schoolId, String schoolName) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? email = prefs.getString('rolla_current_email');
+
+      if (email != null && _user != null) {
+        _user!['schoolId'] = schoolId;
+        _user!['schoolName'] = schoolName;
+
+        await prefs.setString('rolla_user', jsonEncode(_user));
+        await prefs.setString('rolla_user_$email', jsonEncode(_user));
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error asignando escuela: $e');
+    }
+  }
+
+  /// Quitar escuela (quedar libre)
+  Future<void> leaveSchool() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? email = prefs.getString('rolla_current_email');
+
+      if (email != null && _user != null) {
+        _user!['schoolId'] = null;
+        _user!['schoolName'] = null;
+
+        await prefs.setString('rolla_user', jsonEncode(_user));
+        await prefs.setString('rolla_user_$email', jsonEncode(_user));
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error saliendo de escuela: $e');
+    }
+  }
+
+  /// Asignar escuela a OTRO usuario (usado cuando entrenador acepta solicitud)
+  static Future<bool> assignSchoolToUser(
+    String userEmail,
+    String schoolId,
+    String schoolName,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? userData = prefs.getString('rolla_user_$userEmail');
+
+      if (userData != null) {
+        final user = jsonDecode(userData);
+        user['schoolId'] = schoolId;
+        user['schoolName'] = schoolName;
+        await prefs.setString('rolla_user_$userEmail', jsonEncode(user));
+
+        // Si es el usuario actualmente logueado, actualizar sesión activa
+        final currentEmail = prefs.getString('rolla_current_email');
+        if (currentEmail == userEmail) {
+          await prefs.setString('rolla_user', jsonEncode(user));
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error asignando escuela a usuario: $e');
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     try {
       final prefs = await SharedPreferences.getInstance();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rolla/screens/athletes/find_school_screen.dart';
 import '../../providers/athlete_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/splash_screen.dart';
@@ -11,9 +12,9 @@ class AthleteProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final athleteProvider = Provider.of<AthleteProvider>(context);
-    // ignore: unused_local_variable
     final authProvider = Provider.of<AuthProvider>(context);
     final athlete = athleteProvider.athlete;
+    final hasSchool = authProvider.hasSchool;
 
     if (athleteProvider.isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -62,10 +63,14 @@ class AthleteProfileTab extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      athlete.schoolName,
-                      style: const TextStyle(
+                      hasSchool
+                          ? (authProvider.schoolName ?? 'Sin escuela')
+                          : 'Sin escuela asignada',
+                      style: TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF6B7280),
+                        color: hasSchool
+                            ? const Color(0xFF6B7280)
+                            : const Color(0xFFD97706),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -106,7 +111,19 @@ class AthleteProfileTab extends StatelessWidget {
               _buildProfileOption(
                 icon: Icons.school_outlined,
                 title: 'Mi escuela',
-                onTap: () {},
+                subtitle: hasSchool
+                    ? (authProvider.schoolName ?? 'Sin escuela')
+                    : 'No perteneces a ninguna escuela',
+                onTap: () {
+                  if (!hasSchool) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const FindSchoolScreen(),
+                      ),
+                    );
+                  }
+                },
               ),
               _buildProfileOption(
                 icon: Icons.history_outlined,
@@ -147,6 +164,7 @@ class AthleteProfileTab extends StatelessWidget {
   Widget _buildProfileOption({
     required IconData icon,
     required String title,
+    String? subtitle,
     required VoidCallback onTap,
     Color? textColor,
     Color? iconColor,
@@ -160,6 +178,15 @@ class AthleteProfileTab extends StatelessWidget {
           fontWeight: FontWeight.w500,
         ),
       ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF9CA3AF),
+              ),
+            )
+          : null,
       trailing: const Icon(Icons.arrow_forward_ios,
           size: 16, color: Color(0xFF9CA3AF)),
       onTap: onTap,
