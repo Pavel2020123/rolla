@@ -81,7 +81,7 @@ class _FindSchoolScreenState extends State<FindSchoolScreen> {
     final success = await requestProvider.sendRequest(
       athleteId: athleteId,
       athleteName: athleteName,
-      athleteEmail: athleteEmail, // NUEVO
+      athleteEmail: athleteEmail,
       schoolId: school['id']!,
       schoolName: school['name']!,
     );

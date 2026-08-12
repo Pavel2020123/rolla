@@ -1,23 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/event_model.dart';
-import '../../providers/athlete_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/event_provider.dart';
 import '../events/event_detail_screen.dart';
+import '../athletes/find_school_screen.dart';
 
-class AthleteEventsTab extends StatelessWidget {
+class AthleteEventsTab extends StatefulWidget {
   const AthleteEventsTab({super.key});
 
   @override
+  State<AthleteEventsTab> createState() => _AthleteEventsTabState();
+}
+
+class _AthleteEventsTabState extends State<AthleteEventsTab> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<EventProvider>(context, listen: false).loadEvents();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // 1. Escuchamos el estado global
-    final provider = context.watch<AthleteProvider>();
+    final authProvider = Provider.of<AuthProvider>(context);
+    final eventProvider = Provider.of<EventProvider>(context);
 
-    // 2. Manejamos el estado de carga
-    if (provider.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    final hasSchool = authProvider.hasSchool;
+    final schoolId = authProvider.schoolId ?? '';
+    final athleteId = authProvider.user?['id'] ?? '';
 
-    final events = provider.events;
+    final events = hasSchool && schoolId.isNotEmpty
+        ? eventProvider.getEnabledEventsForAthlete(schoolId, athleteId)
+        : <EventModel>[];
+
+    final allSchoolEvents = hasSchool && schoolId.isNotEmpty
+        ? eventProvider.getPublishedEventsBySchool(schoolId)
+        : <EventModel>[];
 
     return SafeArea(
       child: ListView(
@@ -32,30 +52,140 @@ class AthleteEventsTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Mantente al día con tu calendario competitivo',
-            style: TextStyle(
+          Text(
+            hasSchool
+                ? 'Eventos habilitados para ti'
+                : 'Primero necesitas pertenecer a una escuela',
+            style: const TextStyle(
               fontSize: 14,
               color: Color(0xFF6B7280),
             ),
           ),
           const SizedBox(height: 24),
-          
-          if (events.isEmpty)
-            const Center(child: Text('No hay eventos disponibles')),
-            
-          // 3. Renderizamos las tarjetas dinámicamente
-          ...events.map((event) => Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: _buildEventCard(context, event, provider),
-              )),
+
+          if (!hasSchool) ...[
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFCD34D)),
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.info_outline, color: Color(0xFFD97706)),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'No perteneces a ninguna escuela',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF92400E),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Para ver eventos, primero debes estar en una escuela.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFFA16207)),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const FindSchoolScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.search, size: 18),
+                    label: const Text('Buscar escuela'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ]
+
+          else if (events.isEmpty && allSchoolEvents.isEmpty) ...[
+            const Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.event_busy_outlined,
+                    size: 64,
+                    color: Color(0xFFD1D5DB),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'No hay eventos disponibles',
+                    style: TextStyle(
+                      color: Color(0xFF9CA3AF),
+                      fontSize: 16,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Tu escuela aún no ha publicado eventos.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF9CA3AF),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ]
+
+          else if (events.isEmpty && allSchoolEvents.isNotEmpty) ...[
+            const Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.lock_outline,
+                    size: 64,
+                    color: Color(0xFFD1D5DB),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'No tienes eventos habilitados',
+                    style: TextStyle(
+                      color: Color(0xFF9CA3AF),
+                      fontSize: 16,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Tu entrenador debe habilitarte para los eventos.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF9CA3AF),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ]
+
+          else ...[
+            ...events.map((event) => Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: _buildEventCard(context, event),
+                )),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildEventCard(BuildContext context, EventModel event, AthleteProvider provider) {
-    final formattedDate = "${event.date.day} / ${event.date.month} / ${event.date.year}";
+  Widget _buildEventCard(BuildContext context, EventModel event) {
+    final formattedDate = "${event.date.day}/${event.date.month}/${event.date.year}";
+    final eventProvider = Provider.of<EventProvider>(context, listen: false);
 
     return GestureDetector(
       onTap: () {
@@ -98,38 +228,44 @@ class AthleteEventsTab extends StatelessWidget {
                       ),
                     ],
                   ),
-                  
-                  // 4. Botón interactivo para cambiar el estado de inscripción
                   InkWell(
-                    onTap: () {
-                      provider.toggleEventRegistration(event.id);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(event.isRegistered 
-                            ? 'Inscripción cancelada' 
-                            : '¡Te has inscrito con éxito!'),
-                          duration: const Duration(seconds: 2),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                    onTap: () async {
+                      if (!event.isRegistered) {
+                        final success = await eventProvider.registerToEvent(event.id);
+                        if (success && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('¡Te has inscrito con éxito!'),
+                              duration: Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      }
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: event.isRegistered ? const Color(0xFFDEF7EC) : const Color(0xFFE1EFFE),
+                        color: event.isRegistered
+                            ? const Color(0xFFDEF7EC)
+                            : const Color(0xFFE1EFFE),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: event.isRegistered ? const Color(0xFF31C48D) : const Color(0xFF3F83F8),
+                          color: event.isRegistered
+                              ? const Color(0xFF31C48D)
+                              : const Color(0xFF3F83F8),
                           width: 1,
                         ),
                       ),
                       child: Text(
-                        event.status,
+                        event.isRegistered ? 'Inscrito' : 'Inscribirme',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: event.isRegistered ? const Color(0xFF03543F) : const Color(0xFF1E429F),
+                          color: event.isRegistered
+                              ? const Color(0xFF03543F)
+                              : const Color(0xFF1E429F),
                         ),
                       ),
                     ),
@@ -167,8 +303,23 @@ class AthleteEventsTab extends StatelessWidget {
                       const Icon(Icons.category_outlined, size: 16, color: Color(0xFF9CA3AF)),
                       const SizedBox(width: 6),
                       Text(
-                        event.category,
+                        '${event.category} • ${event.modality}',
                         style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.attach_money, size: 16, color: Color(0xFF9CA3AF)),
+                      const SizedBox(width: 6),
+                      Text(
+                        '\$${event.price.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1F2937),
+                        ),
                       ),
                     ],
                   ),

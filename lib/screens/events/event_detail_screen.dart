@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/athlete_provider.dart';
+import '../../providers/event_provider.dart';
 
 class EventDetailScreen extends StatelessWidget {
   final String eventId;
@@ -9,17 +9,17 @@ class EventDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Escuchamos el estado global para mantener el evento actualizado
-    final provider = context.watch<AthleteProvider>();
-    
-    // Buscamos el evento específico por su ID
-    final event = provider.events.firstWhere(
+    final eventProvider = Provider.of<EventProvider>(context);
+
+    final event = eventProvider.events.firstWhere(
       (e) => e.id == eventId,
-      // Si por alguna razón no lo encuentra, devolvemos el primero para no romper la app
-      orElse: () => provider.events.first, 
+      orElse: () => eventProvider.events.first,
     );
 
-    final formattedDate = "${event.date.day} / ${event.date.month} / ${event.date.year}";
+    final formattedDate = "${event.date.day}/${event.date.month}/${event.date.year}";
+    final deadlineText = event.deadline != null
+        ? "${event.deadline!.day}/${event.deadline!.month}/${event.deadline!.year}"
+        : 'Sin fecha límite';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -41,7 +41,6 @@ class EventDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Encabezado del evento
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
@@ -56,16 +55,40 @@ class EventDetailScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            event.category,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                event.category,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                event.modality,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -76,23 +99,46 @@ class EventDetailScreen extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        Text(
+                          event.description,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 14,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 24),
 
-                  // Información detallada
-                  const Text('Información General', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Información General',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 16),
-                  
+
                   _buildInfoRow(Icons.calendar_today, 'Fecha', formattedDate),
+                  if (event.time != null) ...[
+                    const Divider(height: 24),
+                    _buildInfoRow(Icons.access_time, 'Hora', event.time!),
+                  ],
                   const Divider(height: 24),
                   _buildInfoRow(Icons.location_on_outlined, 'Ubicación', event.location),
                   const Divider(height: 24),
-                  _buildInfoRow(Icons.info_outline, 'Estado actual', event.status),
-                  
+                  _buildInfoRow(Icons.attach_money, 'Precio', '\$${event.price.toStringAsFixed(0)}'),
+                  const Divider(height: 24),
+                  _buildInfoRow(Icons.timer_outlined, 'Fecha límite', deadlineText),
+                  if (event.maxSlots != null) ...[
+                    const Divider(height: 24),
+                    _buildInfoRow(Icons.people_outline, 'Cupos máximos', '${event.maxSlots}'),
+                  ],
+
                   const SizedBox(height: 32),
-                  const Text('Requisitos Técnicos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Requisitos Técnicos',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     '• Presentar documento de identidad original.\n'
@@ -105,8 +151,7 @@ class EventDetailScreen extends StatelessWidget {
               ),
             ),
           ),
-          
-          // Botón inferior fijo para Inscribirse / Cancelar
+
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -116,12 +161,25 @@ class EventDetailScreen extends StatelessWidget {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  // Cambiamos el estado de inscripción usando el Provider
-                  context.read<AthleteProvider>().toggleEventRegistration(event.id);
-                },
+                onPressed: event.isRegistered
+                    ? null
+                    : () async {
+                        final success = await eventProvider.registerToEvent(event.id);
+                        if (success && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('¡Te has inscrito con éxito!'),
+                              duration: Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: event.isRegistered ? const Color(0xFFFEE2E2) : const Color(0xFF2563EB),
+                  backgroundColor: event.isRegistered
+                      ? const Color(0xFFDEF7EC)
+                      : const Color(0xFF2563EB),
+                  disabledBackgroundColor: const Color(0xFFDEF7EC),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -129,11 +187,13 @@ class EventDetailScreen extends StatelessWidget {
                   elevation: 0,
                 ),
                 child: Text(
-                  event.isRegistered ? 'Cancelar Inscripción' : 'Inscribirme al Evento',
+                  event.isRegistered ? 'Ya estás inscrito' : 'Inscribirme al Evento',
                   style: TextStyle(
-                    fontSize: 16, 
-                    fontWeight: FontWeight.bold, 
-                    color: event.isRegistered ? const Color(0xFF991B1B) : Colors.white
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: event.isRegistered
+                        ? const Color(0xFF03543F)
+                        : Colors.white,
                   ),
                 ),
               ),
@@ -156,12 +216,23 @@ class EventDetailScreen extends StatelessWidget {
           child: Icon(icon, color: const Color(0xFF2563EB)),
         ),
         const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13)),
-            Text(subtitle, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13),
+              ),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

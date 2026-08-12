@@ -9,6 +9,7 @@ import 'create_event_screen.dart';
 import 'create_school_screen.dart';
 import 'school_requests_screen.dart';
 import 'join_school_screen.dart';
+import '../../providers/event_provider.dart';
 
 class CoachMainScreen extends StatefulWidget {
   const CoachMainScreen({super.key});
@@ -21,16 +22,21 @@ class _CoachMainScreenState extends State<CoachMainScreen> {
   int _selectedIndex = 0;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final ownerId = authProvider.user?['id'] ?? '';
-      if (ownerId.isNotEmpty) {
-        Provider.of<SchoolProvider>(context, listen: false).loadSchool(ownerId);
-      }
-    });
-  }
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final ownerId = authProvider.user?['id'] ?? '';
+
+    if (ownerId.isNotEmpty) {
+      Provider.of<SchoolProvider>(context, listen: false)
+          .loadSchool(ownerId);
+    }
+
+    Provider.of<EventProvider>(context, listen: false).loadEvents();
+    Provider.of<SchoolRequestProvider>(context, listen: false).loadRequests();
+  });
+}
 
   void _onItemTapped(int index) {
     setState(() {
@@ -358,6 +364,26 @@ class _CoachHomeTab extends StatelessWidget {
                           builder: (_) => const SchoolRequestsScreen(),
                         ),
                       );
+                    },
+                  );
+                },
+              ),
+                            const SizedBox(height: 12),
+              Consumer<EventProvider>(
+                builder: (context, eventProvider, child) {
+                  final schoolId = schoolProvider.school?.id ?? '';
+                  final eventCount = schoolId.isNotEmpty
+                      ? eventProvider.getEventsBySchool(schoolId).length
+                      : 0;
+
+                  return _buildQuickActionCard(
+                    title: 'Mis Eventos',
+                    subtitle: eventCount > 0
+                        ? '$eventCount evento${eventCount == 1 ? '' : 's'} publicado${eventCount == 1 ? '' : 's'}'
+                        : 'Ver y gestionar eventos de tu escuela',
+                    icon: Icons.event_note_outlined,
+                    onTap: () {
+                      eventProvider.loadEvents();
                     },
                   );
                 },
