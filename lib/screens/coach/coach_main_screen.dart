@@ -3,6 +3,7 @@ import '../../models/school_request_model.dart';
 import 'package:provider/provider.dart';
 import 'package:rolla/providers/school_request_provider.dart';
 import '../../providers/auth_provider.dart';
+import 'coach_events_screen.dart';
 import '../../providers/school_provider.dart';
 import '../auth/splash_screen.dart';
 import 'create_event_screen.dart';
@@ -279,12 +280,20 @@ class _CoachHomeTab extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard(
-                      title: 'Eventos',
-                      value: '0',
-                      icon: Icons.event,
-                      color: const Color(0xFF10B981),
+                                    Expanded(
+                    child: Consumer<EventProvider>(
+                      builder: (context, eventProvider, child) {
+                        final schoolId = schoolProvider.school?.id ?? '';
+                        final count = schoolId.isNotEmpty
+                            ? eventProvider.getEventsBySchool(schoolId).length
+                            : 0;
+                        return _buildStatCard(
+                          title: 'Eventos',
+                          value: count.toString(),
+                          icon: Icons.event,
+                          color: const Color(0xFF10B981),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -369,7 +378,7 @@ class _CoachHomeTab extends StatelessWidget {
                 },
               ),
                             const SizedBox(height: 12),
-              Consumer<EventProvider>(
+                            Consumer<EventProvider>(
                 builder: (context, eventProvider, child) {
                   final schoolId = schoolProvider.school?.id ?? '';
                   final eventCount = schoolId.isNotEmpty
@@ -383,7 +392,12 @@ class _CoachHomeTab extends StatelessWidget {
                         : 'Ver y gestionar eventos de tu escuela',
                     icon: Icons.event_note_outlined,
                     onTap: () {
-                      eventProvider.loadEvents();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CoachEventsScreen(),
+                        ),
+                      );
                     },
                   );
                 },
