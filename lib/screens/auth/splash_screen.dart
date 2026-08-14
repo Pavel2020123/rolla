@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../home/athlete_main_screen.dart';
 import '../coach/coach_main_screen.dart';
+import '../admin/admin_main_screen.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -33,7 +34,12 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (hasSession) {
       // Hay sesión activa, ir al panel correspondiente
-      if (authProvider.role == 'coach') {
+      if (authProvider.role == 'admin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminMainScreen()),
+        );
+      } else if (authProvider.role == 'coach') {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const CoachMainScreen()),

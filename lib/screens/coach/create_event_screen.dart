@@ -118,7 +118,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       price: price,
       deadline: _deadlineDate,
       maxSlots: maxSlots,
-      status: 'published', // En demo publicamos directo, luego será 'pending'
+      status: 'pending', // En demo publicamos directo, luego será 'pending'
       enabledAthletes: const [],
       isRegistered: false,
     );
@@ -130,7 +130,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     if (!mounted) return;
 
     if (success) {
-      _showMessage('Evento creado exitosamente');
+      _showMessage('Evento enviado a revisión. El administrador lo aprobará pronto.');
       Navigator.pop(context);
     } else {
       _showMessage('Error al crear el evento');

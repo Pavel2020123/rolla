@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../home/athlete_main_screen.dart';
 import '../coach/coach_main_screen.dart';
+import '../admin/admin_main_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -45,7 +46,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (success) {
       // Navegar según el rol
-      if (authProvider.role == 'coach') {
+      if (authProvider.role == 'admin') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminMainScreen()),
+          (route) => false,
+        );
+      } else if (authProvider.role == 'coach') {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const CoachMainScreen()),
