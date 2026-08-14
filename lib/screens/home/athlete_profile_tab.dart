@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rolla/screens/athletes/find_school_screen.dart';
+import 'package:rolla/screens/athlete/find_school_screen.dart';
 import '../../providers/athlete_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/splash_screen.dart';
 import '../profile/edit_profile_screen.dart';
+import '../athlete/request_transfer_screen.dart';
 
 class AthleteProfileTab extends StatelessWidget {
   const AthleteProfileTab({super.key});
@@ -123,6 +124,18 @@ class AthleteProfileTab extends StatelessWidget {
                       ),
                     );
                   }
+                },
+              ),
+                            _buildProfileOption(
+                icon: Icons.swap_horiz_outlined,
+                title: 'Solicitar traslado',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RequestTransferScreen(),
+                    ),
+                  );
                 },
               ),
               _buildProfileOption(

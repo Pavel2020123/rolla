@@ -1,0 +1,207 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/transfer_request_model.dart';
+import 'auth_provider.dart';
+
+class TransferProvider extends ChangeNotifier {
+  List<TransferRequestModel> _transfers = [];
+  bool _isLoading = false;
+
+  List<TransferRequestModel> get transfers => List.unmodifiable(_transfers);
+  bool get isLoading => _isLoading;
+
+  /// Solicitudes pendientes para una escuela (como escuela actual)
+  List<TransferRequestModel> getPendingForCurrentSchool(String schoolId) {
+    return _transfers.where((t) =>
+        t.currentSchoolId == schoolId &&
+        t.status == 'pending').toList();
+  }
+
+  /// Solicitudes pendientes para una escuela (como escuela destino)
+  List<TransferRequestModel> getPendingForTargetSchool(String schoolId) {
+    return _transfers.where((t) =>
+        t.targetSchoolId == schoolId &&
+        t.status == 'accepted_by_current').toList();
+  }
+
+  /// Solicitudes de un deportista
+  List<TransferRequestModel> getTransfersByAthlete(String athleteId) {
+    return _transfers.where((t) => t.athleteId == athleteId).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  Future<void> loadTransfers() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? data = prefs.getString('rolla_transfers');
+      if (data != null) {
+        final List decoded = jsonDecode(data);
+        _transfers = decoded.map((e) => TransferRequestModel.fromJson(e)).toList();
+      }
+    } catch (e) {
+      debugPrint('Error cargando traslados: $e');
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// Solicitar traslado
+  Future<bool> requestTransfer({
+    required String athleteId,
+    required String athleteName,
+    required String athleteEmail,
+    required String currentSchoolId,
+    required String currentSchoolName,
+    String? targetSchoolId,
+    String? targetSchoolName,
+    required String type,
+  }) async {
+    try {
+      // Verificar que no haya una solicitud pendiente
+      final existing = _transfers.firstWhere(
+        (t) => t.athleteId == athleteId && (t.status == 'pending' || t.status == 'accepted_by_current'),
+        orElse: () => TransferRequestModel(
+          id: '',
+          athleteId: '',
+          athleteName: '',
+          athleteEmail: '',
+          currentSchoolId: '',
+          currentSchoolName: '',
+          type: '',
+          createdAt: DateTime.now(),
+        ),
+      );
+
+      if (existing.id.isNotEmpty) {
+        return false; // Ya hay solicitud activa
+      }
+
+      final newTransfer = TransferRequestModel(
+        id: 'trf_${DateTime.now().millisecondsSinceEpoch}',
+        athleteId: athleteId,
+        athleteName: athleteName,
+        athleteEmail: athleteEmail,
+        currentSchoolId: currentSchoolId,
+        currentSchoolName: currentSchoolName,
+        targetSchoolId: targetSchoolId,
+        targetSchoolName: targetSchoolName,
+        type: type,
+        status: 'pending',
+        createdAt: DateTime.now(),
+      );
+
+      _transfers.add(newTransfer);
+      await _saveTransfers();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Error solicitando traslado: $e');
+      return false;
+    }
+  }
+
+  /// Escuela actual acepta liberar
+  Future<void> acceptByCurrentSchool(String transferId) async {
+    final index = _transfers.indexWhere((t) => t.id == transferId);
+    if (index != -1) {
+      final transfer = _transfers[index];
+      _transfers[index] = TransferRequestModel(
+        id: transfer.id,
+        athleteId: transfer.athleteId,
+        athleteName: transfer.athleteName,
+        athleteEmail: transfer.athleteEmail,
+        currentSchoolId: transfer.currentSchoolId,
+        currentSchoolName: transfer.currentSchoolName,
+        targetSchoolId: transfer.targetSchoolId,
+        targetSchoolName: transfer.targetSchoolName,
+        type: transfer.type,
+        status: 'accepted_by_current',
+        createdAt: transfer.createdAt,
+        respondedAt: DateTime.now(),
+      );
+      await _saveTransfers();
+      notifyListeners();
+    }
+  }
+
+  /// Escuela destino acepta
+  Future<void> acceptByTargetSchool(String transferId) async {
+    final index = _transfers.indexWhere((t) => t.id == transferId);
+    if (index != -1) {
+      final transfer = _transfers[index];
+      _transfers[index] = TransferRequestModel(
+        id: transfer.id,
+        athleteId: transfer.athleteId,
+        athleteName: transfer.athleteName,
+        athleteEmail: transfer.athleteEmail,
+        currentSchoolId: transfer.currentSchoolId,
+        currentSchoolName: transfer.currentSchoolName,
+        targetSchoolId: transfer.targetSchoolId,
+        targetSchoolName: transfer.targetSchoolName,
+        type: transfer.type,
+        status: 'completed',
+        createdAt: transfer.createdAt,
+        respondedAt: DateTime.now(),
+      );
+
+      // Si es traslado (no agente libre), asignar nueva escuela
+      if (transfer.type == 'transfer' && transfer.targetSchoolId != null) {
+        await AuthProvider.assignSchoolToUser(
+          transfer.athleteEmail,
+          transfer.targetSchoolId!,
+          transfer.targetSchoolName ?? 'Escuela',
+        );
+      } else if (transfer.type == 'free_agent') {
+        // Quitar escuela (quedar libre)
+        await AuthProvider.assignSchoolToUser(
+          transfer.athleteEmail,
+          '',
+          '',
+        );
+      }
+
+      await _saveTransfers();
+      notifyListeners();
+    }
+  }
+
+  /// Rechazar solicitud
+  Future<void> rejectTransfer(String transferId) async {
+    final index = _transfers.indexWhere((t) => t.id == transferId);
+    if (index != -1) {
+      final transfer = _transfers[index];
+      _transfers[index] = TransferRequestModel(
+        id: transfer.id,
+        athleteId: transfer.athleteId,
+        athleteName: transfer.athleteName,
+        athleteEmail: transfer.athleteEmail,
+        currentSchoolId: transfer.currentSchoolId,
+        currentSchoolName: transfer.currentSchoolName,
+        targetSchoolId: transfer.targetSchoolId,
+        targetSchoolName: transfer.targetSchoolName,
+        type: transfer.type,
+        status: 'rejected',
+        createdAt: transfer.createdAt,
+        respondedAt: DateTime.now(),
+      );
+      await _saveTransfers();
+      notifyListeners();
+    }
+  }
+
+  Future<void> _saveTransfers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String data = jsonEncode(_transfers.map((t) => t.toJson()).toList());
+    await prefs.setString('rolla_transfers', data);
+  }
+
+  void clear() {
+    _transfers = [];
+    notifyListeners();
+  }
+}

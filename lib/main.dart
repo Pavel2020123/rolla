@@ -8,6 +8,7 @@ import 'providers/notification_provider.dart';
 import 'providers/school_provider.dart';
 import 'providers/school_request_provider.dart';
 import 'providers/event_provider.dart';
+import 'providers/transfer_provider.dart';
 
 // Screens
 import 'screens/auth/splash_screen.dart';
@@ -26,6 +27,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AthleteProvider()),
         ChangeNotifierProvider(create: (_) => SchoolProvider()),
+        ChangeNotifierProvider(create: (_) => TransferProvider()),
         ChangeNotifierProvider(create: (_) => SchoolRequestProvider()),
         ChangeNotifierProvider(create: (_) => EventProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),

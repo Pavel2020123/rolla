@@ -2,64 +2,63 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/school_provider.dart';
-import '../../providers/school_request_provider.dart';
+import '../../providers/transfer_provider.dart';
 import '../../providers/notification_provider.dart';
-import '../../models/school_request_model.dart';
+import '../../models/transfer_request_model.dart';
 
-class SchoolRequestsScreen extends StatefulWidget {
-  const SchoolRequestsScreen({super.key});
+class TransferRequestsScreen extends StatefulWidget {
+  const TransferRequestsScreen({super.key});
 
   @override
-  State<SchoolRequestsScreen> createState() => _SchoolRequestsScreenState();
+  State<TransferRequestsScreen> createState() => _TransferRequestsScreenState();
 }
 
-class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
+class _TransferRequestsScreenState extends State<TransferRequestsScreen> {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<SchoolRequestProvider>(context, listen: false).loadRequests();
+      Provider.of<TransferProvider>(context, listen: false).loadTransfers();
     });
   }
 
-  Future<void> _acceptRequest(SchoolRequestModel request) async {
-    final requestProvider =
-        Provider.of<SchoolRequestProvider>(context, listen: false);
-    final notificationProvider =
-        Provider.of<NotificationProvider>(context, listen: false);
+  Future<void> _acceptRelease(TransferRequestModel transfer) async {
+    final transferProvider = Provider.of<TransferProvider>(context, listen: false);
+    final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
 
-    await requestProvider.acceptRequest(request.id);
+    await transferProvider.acceptByCurrentSchool(transfer.id);
 
+    // Notificar al deportista
     await notificationProvider.addNotification(
-      userId: request.athleteId,
-      title: '¡Solicitud aceptada!',
-      message: 'Has sido aceptado en ${request.schoolName}. Bienvenido.',
-      type: 'request',
-      relatedId: request.id,
+      userId: transfer.athleteId,
+      title: 'Traslado aprobado',
+      message: transfer.type == 'free_agent'
+          ? 'Tu escuela te ha liberado. Ahora eres agente libre.'
+          : 'Tu escuela actual aprobó tu traslado. Esperando aprobación de la nueva escuela.',
+      type: 'transfer',
+      relatedId: transfer.id,
     );
 
     if (!mounted) return;
-    _showMessage('${request.athleteName} ha sido aceptado en la escuela');
+    _showMessage('Solicitud aprobada');
   }
 
-  Future<void> _rejectRequest(SchoolRequestModel request) async {
-    final requestProvider =
-        Provider.of<SchoolRequestProvider>(context, listen: false);
-    final notificationProvider =
-        Provider.of<NotificationProvider>(context, listen: false);
+  Future<void> _rejectTransfer(TransferRequestModel transfer) async {
+    final transferProvider = Provider.of<TransferProvider>(context, listen: false);
+    final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
 
-    await requestProvider.rejectRequest(request.id);
+    await transferProvider.rejectTransfer(transfer.id);
 
     await notificationProvider.addNotification(
-      userId: request.athleteId,
-      title: 'Solicitud rechazada',
-      message: 'Tu solicitud para unirte a ${request.schoolName} fue rechazada.',
-      type: 'request',
-      relatedId: request.id,
+      userId: transfer.athleteId,
+      title: 'Traslado rechazado',
+      message: 'Tu solicitud de ${transfer.type == 'free_agent' ? 'quedar como agente libre' : 'traslado'} fue rechazada.',
+      type: 'transfer',
+      relatedId: transfer.id,
     );
 
     if (!mounted) return;
-    _showMessage('Solicitud de ${request.athleteName} rechazada');
+    _showMessage('Solicitud rechazada');
   }
 
   void _showMessage(String message) {
@@ -72,12 +71,12 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final schoolProvider = Provider.of<SchoolProvider>(context);
-    final requestProvider = Provider.of<SchoolRequestProvider>(context);
+    final transferProvider = Provider.of<TransferProvider>(context);
 
     final schoolId = schoolProvider.school?.id ?? authProvider.schoolId ?? '';
     final pendingRequests = schoolId.isNotEmpty
-        ? requestProvider.getPendingRequestsForSchool(schoolId)
-        : <SchoolRequestModel>[];
+        ? transferProvider.getPendingForCurrentSchool(schoolId)
+        : <TransferRequestModel>[];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
@@ -85,7 +84,7 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
         backgroundColor: const Color(0xFFF5F7FA),
         elevation: 0,
         title: const Text(
-          'Solicitudes de Ingreso',
+          'Solicitudes de Traslado',
           style: TextStyle(
             color: Color(0xFF1F2937),
             fontWeight: FontWeight.bold,
@@ -100,7 +99,7 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Tienes ${pendingRequests.length} solicitud${pendingRequests.length == 1 ? '' : 'es'} pendiente${pendingRequests.length == 1 ? '' : 's'}',
+                '${pendingRequests.length} solicitud${pendingRequests.length == 1 ? '' : 'es'} pendiente${pendingRequests.length == 1 ? '' : 's'}',
                 style: const TextStyle(
                   fontSize: 16,
                   color: Color(0xFF6B7280),
@@ -108,15 +107,15 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: requestProvider.isLoading
+                child: transferProvider.isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : pendingRequests.isEmpty
                         ? _buildEmptyState()
                         : ListView.builder(
                             itemCount: pendingRequests.length,
                             itemBuilder: (context, index) {
-                              final request = pendingRequests[index];
-                              return _buildRequestCard(request);
+                              final transfer = pendingRequests[index];
+                              return _buildTransferCard(transfer);
                             },
                           ),
               ),
@@ -133,13 +132,13 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.inbox_outlined,
+            Icons.swap_horiz_outlined,
             size: 80,
             color: const Color(0xFFD1D5DB),
           ),
           const SizedBox(height: 16),
           const Text(
-            'No hay solicitudes pendientes',
+            'No hay solicitudes de traslado',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -148,7 +147,7 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Cuando un deportista solicite ingresar a tu escuela, aparecerá aquí.',
+            'Cuando un deportista solicite un traslado, aparecerá aquí.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Color(0xFF9CA3AF),
@@ -159,7 +158,7 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
     );
   }
 
-  Widget _buildRequestCard(SchoolRequestModel request) {
+  Widget _buildTransferCard(TransferRequestModel transfer) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
@@ -176,12 +175,12 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
+                    color: const Color(0xFFFEF3C7),
                     borderRadius: BorderRadius.circular(25),
                   ),
                   child: const Icon(
-                    Icons.person,
-                    color: Color(0xFF2563EB),
+                    Icons.swap_horiz,
+                    color: Color(0xFFD97706),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -190,7 +189,7 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        request.athleteName,
+                        transfer.athleteName,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -199,7 +198,9 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Solicitó ingreso el ${_formatDate(request.createdAt)}',
+                        transfer.type == 'free_agent'
+                            ? 'Solicita quedar como agente libre'
+                            : 'Solicita traslado a otra escuela',
                         style: const TextStyle(
                           fontSize: 13,
                           color: Color(0xFF6B7280),
@@ -215,7 +216,7 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _rejectRequest(request),
+                    onPressed: () => _rejectTransfer(transfer),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFFEF4444),
                       side: const BorderSide(color: Color(0xFFEF4444)),
@@ -229,7 +230,7 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => _acceptRequest(request),
+                    onPressed: () => _acceptRelease(transfer),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF10B981),
                       foregroundColor: Colors.white,
@@ -246,9 +247,5 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
   }
 }

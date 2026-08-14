@@ -3,8 +3,9 @@ import 'package:provider/provider.dart';
 import '../../models/event_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/event_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../events/event_detail_screen.dart';
-import '../athletes/find_school_screen.dart';
+import '../athlete/find_school_screen.dart';
 
 class AthleteEventsTab extends StatefulWidget {
   const AthleteEventsTab({super.key});
@@ -186,6 +187,8 @@ class _AthleteEventsTabState extends State<AthleteEventsTab> {
   Widget _buildEventCard(BuildContext context, EventModel event) {
     final formattedDate = "${event.date.day}/${event.date.month}/${event.date.year}";
     final eventProvider = Provider.of<EventProvider>(context, listen: false);
+    final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     return GestureDetector(
       onTap: () {
@@ -232,14 +235,25 @@ class _AthleteEventsTabState extends State<AthleteEventsTab> {
                     onTap: () async {
                       if (!event.isRegistered) {
                         final success = await eventProvider.registerToEvent(event.id);
-                        if (success && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('¡Te has inscrito con éxito!'),
-                              duration: Duration(seconds: 2),
-                              behavior: SnackBarBehavior.floating,
-                            ),
+                        if (success) {
+                          // Notificar al entrenador
+                          await notificationProvider.addNotification(
+                            userId: event.creatorId,
+                            title: 'Nueva inscripción',
+                            message: '${authProvider.user?['fullName'] ?? 'Un deportista'} se inscribió a ${event.title}',
+                            type: 'registration',
+                            relatedId: event.id,
                           );
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('¡Te has inscrito con éxito!'),
+                                duration: Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
                         }
                       }
                     },

@@ -10,6 +10,7 @@ import '../notifications_screen.dart';
 import 'create_school_screen.dart';
 import 'join_school_screen.dart';
 import 'create_event_screen.dart';
+import 'transfer_requests_screen.dart';
 import 'coach_events_screen.dart';
 import 'school_requests_screen.dart';
 
@@ -57,7 +58,10 @@ class _CoachMainScreenState extends State<CoachMainScreen> {
         final hasSchool = schoolProvider.hasSchool;
 
         final screens = [
-          _CoachHomeTab(hasSchool: hasSchool),
+          _CoachHomeTab(
+            hasSchool: hasSchool,
+            onTabSelected: _onItemTapped,
+          ),
           _CoachSchoolTab(hasSchool: hasSchool),
           const _CoachAthletesTab(),
           const NotificationsScreen(),
@@ -222,8 +226,12 @@ class _CoachMainScreenState extends State<CoachMainScreen> {
 // ============================================================
 class _CoachHomeTab extends StatelessWidget {
   final bool hasSchool;
+  final Function(int) onTabSelected;
 
-  const _CoachHomeTab({required this.hasSchool});
+  const _CoachHomeTab({
+    required this.hasSchool,
+    required this.onTabSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +241,7 @@ class _CoachHomeTab extends StatelessWidget {
     final school = schoolProvider.school;
 
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,7 +439,7 @@ class _CoachHomeTab extends StatelessWidget {
                 title: 'Ver Deportistas',
                 subtitle: 'Gestiona tus deportistas',
                 icon: Icons.people_outline,
-                onTap: () {},
+                onTap: () => onTabSelected(2),
               ),
               const SizedBox(height: 12),
               Consumer<SchoolRequestProvider>(
@@ -671,10 +679,10 @@ class _CoachSchoolTab extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 40),
-              Icon(
+              const Icon(
                 Icons.school_outlined,
                 size: 80,
-                color: const Color(0xFFD1D5DB),
+                color: Color(0xFFD1D5DB),
               ),
               const SizedBox(height: 24),
               const Text(
@@ -938,24 +946,24 @@ class _CoachAthletesTabState extends State<_CoachAthletesTab> {
                 ),
               )
             else if (acceptedAthletes.isEmpty)
-              Center(
+              const Center(
                 child: Column(
                   children: [
                     Icon(
                       Icons.people_outline,
                       size: 64,
-                      color: const Color(0xFFD1D5DB),
+                      color: Color(0xFFD1D5DB),
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
+                    SizedBox(height: 16),
+                    Text(
                       'No hay deportistas en tu escuela',
                       style: TextStyle(
                         color: Color(0xFF9CA3AF),
                         fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
+                    SizedBox(height: 8),
+                    Text(
                       'Los deportistas aparecerán aquí cuando aceptes sus solicitudes de ingreso.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -1036,7 +1044,7 @@ class _CoachProfileTab extends StatelessWidget {
     final userEmail = authProvider.user?['email'] ?? '';
 
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
