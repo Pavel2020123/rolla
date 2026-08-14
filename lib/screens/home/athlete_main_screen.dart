@@ -11,6 +11,7 @@ import '../notifications_screen.dart';
 import 'athlete_home_tab.dart';
 import 'athlete_history_tab.dart';
 import 'athlete_events_tab.dart';
+import 'athlete_trainings_tab.dart';
 import 'athlete_profile_tab.dart';
 
 class AthleteMainScreen extends StatefulWidget {
@@ -23,10 +24,11 @@ class AthleteMainScreen extends StatefulWidget {
 class _AthleteMainScreenState extends State<AthleteMainScreen> {
   int _selectedIndex = 0;
 
-  // Lista con 5 pantallas para incluir las Notificaciones y mantener el Perfil
+  // Lista con 6 pantallas para incluir Entrenos y Notificaciones
   final List<Widget> _screens = [
     const AthleteHomeTab(),
     const AthleteEventsTab(),
+    const AthleteTrainingsTab(),
     const AthleteHistoryTab(),
     const NotificationsScreen(),
     const AthleteProfileTab(),
@@ -101,6 +103,17 @@ class _AthleteMainScreenState extends State<AthleteMainScreen> {
                     child: Icon(Icons.calendar_today),
                   ),
                   label: 'Eventos',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Padding(
+                    padding: EdgeInsets.only(bottom: 4.0),
+                    child: Icon(Icons.fitness_center_outlined),
+                  ),
+                  activeIcon: Padding(
+                    padding: EdgeInsets.only(bottom: 4.0),
+                    child: Icon(Icons.fitness_center),
+                  ),
+                  label: 'Entrenos',
                 ),
                 const BottomNavigationBarItem(
                   icon: Padding(

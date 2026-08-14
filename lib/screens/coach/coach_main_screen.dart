@@ -16,6 +16,7 @@ import 'payments_received_screen.dart';
 import 'transfer_requests_screen.dart';
 import 'coach_events_screen.dart';
 import 'school_requests_screen.dart';
+import 'coach_trainings_screen.dart';
 
 class CoachMainScreen extends StatefulWidget {
   const CoachMainScreen({super.key});
@@ -517,6 +518,20 @@ class _CoachHomeTab extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) => const PaymentsReceivedScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildQuickActionCard(
+                title: 'Entrenamientos',
+                subtitle: 'Programar y ver asistencias',
+                icon: Icons.fitness_center_outlined,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CoachTrainingsScreen(),
                     ),
                   );
                 },
