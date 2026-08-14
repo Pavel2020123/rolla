@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/event_provider.dart';
+import '../../providers/payment_provider.dart';
 import '../../providers/school_provider.dart';
 import '../../models/event_model.dart';
 import 'enable_athletes_screen.dart';
@@ -19,6 +20,7 @@ class _CoachEventsScreenState extends State<CoachEventsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<EventProvider>(context, listen: false).loadEvents();
+      Provider.of<PaymentProvider>(context, listen: false).loadPayments();
     });
   }
 
@@ -27,11 +29,12 @@ class _CoachEventsScreenState extends State<CoachEventsScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final schoolProvider = Provider.of<SchoolProvider>(context);
     final eventProvider = Provider.of<EventProvider>(context);
+    final paymentProvider = Provider.of<PaymentProvider>(context);
 
     final schoolId = schoolProvider.school?.id ?? authProvider.schoolId ?? '';
     final events = schoolId.isNotEmpty
         ? eventProvider.getEventsBySchool(schoolId)
-        : <EventModel>[];
+        : [];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
@@ -70,7 +73,7 @@ class _CoachEventsScreenState extends State<CoachEventsScreen> {
                             itemCount: events.length,
                             itemBuilder: (context, index) {
                               final event = events[index];
-                              return _buildEventCard(context, event);
+                              return _buildEventCard(context, event, paymentProvider);
                             },
                           ),
               ),
@@ -86,10 +89,10 @@ class _CoachEventsScreenState extends State<CoachEventsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
+          const Icon(
             Icons.event_busy_outlined,
             size: 80,
-            color: const Color(0xFFD1D5DB),
+            color: Color(0xFFD1D5DB),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -113,9 +116,14 @@ class _CoachEventsScreenState extends State<CoachEventsScreen> {
     );
   }
 
-  Widget _buildEventCard(BuildContext context, EventModel event) {
+  Widget _buildEventCard(BuildContext context, EventModel event, PaymentProvider paymentProvider) {
     final formattedDate = '${event.date.day}/${event.date.month}/${event.date.year}';
     final enabledCount = event.enabledAthletes.length;
+
+    // Contar cuántos pagaron para este evento (buscando en todos los pagos)
+    final paidCount = paymentProvider.payments.where((p) {
+      return p.eventId == event.id && p.isPaid;
+    }).length;
 
     Color statusColor;
     String statusText;
@@ -163,7 +171,7 @@ class _CoachEventsScreenState extends State<CoachEventsScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.1),
+                      color: statusColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -224,15 +232,9 @@ class _CoachEventsScreenState extends State<CoachEventsScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Icon(Icons.people_outline, size: 14, color: Color(0xFF9CA3AF)),
-                  const SizedBox(width: 6),
-                  Text(
-                    '$enabledCount deportista${enabledCount == 1 ? '' : 's'} habilitado${enabledCount == 1 ? '' : 's'}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF6B7280),
-                    ),
-                  ),
+                  _buildMiniStat(Icons.payments_outlined, '$paidCount pagados', const Color(0xFF10B981)),
+                  const SizedBox(width: 16),
+                  _buildMiniStat(Icons.people_outline, '$enabledCount habilitados', const Color(0xFF2563EB)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -264,6 +266,24 @@ class _CoachEventsScreenState extends State<CoachEventsScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMiniStat(IconData icon, String text, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            color: color,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }

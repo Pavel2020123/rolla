@@ -5,8 +5,8 @@ import '../../providers/event_provider.dart';
 import '../../providers/school_provider.dart';
 import '../../providers/school_request_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/payment_provider.dart';
 import '../../models/event_model.dart';
-import '../../models/school_request_model.dart';
 
 class EnableAthletesScreen extends StatefulWidget {
   final String eventId;
@@ -24,6 +24,7 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<EventProvider>(context, listen: false).loadEvents();
       Provider.of<SchoolRequestProvider>(context, listen: false).loadRequests();
+      Provider.of<PaymentProvider>(context, listen: false).loadPayments();
     });
   }
 
@@ -33,6 +34,7 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
     final schoolProvider = Provider.of<SchoolProvider>(context);
     final eventProvider = Provider.of<EventProvider>(context);
     final requestProvider = Provider.of<SchoolRequestProvider>(context);
+    final paymentProvider = Provider.of<PaymentProvider>(context);
 
     final schoolId = schoolProvider.school?.id ?? authProvider.schoolId ?? '';
     final event = eventProvider.events.firstWhere(
@@ -42,7 +44,13 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
 
     final acceptedAthletes = schoolId.isNotEmpty
         ? requestProvider.getAcceptedAthletesForSchool(schoolId)
-        : <SchoolRequestModel>[];
+        : [];
+
+    final paidCount = acceptedAthletes.where((a) {
+      return paymentProvider.hasPaid(a.athleteId, event.id);
+    }).length;
+
+    final enabledCount = event.enabledAthletes.length;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
@@ -64,6 +72,7 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Info del evento
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -90,6 +99,14 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
                         color: Color(0xFF6B7280),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _buildStatChip('$paidCount pagados', const Color(0xFF10B981)),
+                        const SizedBox(width: 8),
+                        _buildStatChip('$enabledCount habilitados', const Color(0xFF2563EB)),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -110,6 +127,7 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
                         itemBuilder: (context, index) {
                           final athlete = acceptedAthletes[index];
                           final isEnabled = event.enabledAthletes.contains(athlete.athleteId);
+                          final hasPaid = paymentProvider.hasPaid(athlete.athleteId, event.id);
 
                           return Card(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -117,6 +135,7 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               leading: Container(
                                 width: 48,
                                 height: 48,
@@ -140,39 +159,83 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
                                   color: Color(0xFF1F2937),
                                 ),
                               ),
-                              subtitle: Text(
-                                isEnabled ? 'Habilitado para este evento' : 'No habilitado',
-                                style: TextStyle(
-                                  color: isEnabled
-                                      ? const Color(0xFF10B981)
-                                      : const Color(0xFF9CA3AF),
-                                  fontSize: 13,
-                                ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    isEnabled
+                                        ? 'Habilitado para este evento'
+                                        : 'No habilitado',
+                                    style: TextStyle(
+                                      color: isEnabled
+                                          ? const Color(0xFF10B981)
+                                          : const Color(0xFF9CA3AF),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        hasPaid ? Icons.check_circle : Icons.pending,
+                                        size: 14,
+                                        color: hasPaid
+                                            ? const Color(0xFF10B981)
+                                            : const Color(0xFFF59E0B),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        hasPaid ? 'Pago completado' : 'Pago pendiente',
+                                        style: TextStyle(
+                                          color: hasPaid
+                                              ? const Color(0xFF10B981)
+                                              : const Color(0xFFF59E0B),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                               trailing: Switch(
                                 value: isEnabled,
                                 activeColor: const Color(0xFF2563EB),
-                                onChanged: (value) async {
-                                  final eventProvider =
-                                      Provider.of<EventProvider>(context, listen: false);
-                                  final notificationProvider =
-                                      Provider.of<NotificationProvider>(context, listen: false);
+                                onChanged: hasPaid
+                                    ? (value) async {
+                                        final eventProvider =
+                                            Provider.of<EventProvider>(context, listen: false);
+                                        final notificationProvider =
+                                            Provider.of<NotificationProvider>(context, listen: false);
 
-                                  await eventProvider.toggleAthleteForEvent(
-                                    event.id,
-                                    athlete.athleteId,
-                                  );
+                                        await eventProvider.toggleAthleteForEvent(
+                                          event.id,
+                                          athlete.athleteId,
+                                        );
 
-                                  if (value) {
-                                    await notificationProvider.addNotification(
-                                      userId: athlete.athleteId,
-                                      title: 'Habilitado para evento',
-                                      message: 'Tu entrenador te habilitó para participar en: ${event.title}',
-                                      type: 'event',
-                                      relatedId: event.id,
-                                    );
-                                  }
-                                },
+                                        if (value) {
+                                          await notificationProvider.addNotification(
+                                            userId: athlete.athleteId,
+                                            title: 'Habilitado para evento',
+                                            message:
+                                                'Tu entrenador te habilitó para participar en: ${event.title}',
+                                            type: 'event',
+                                            relatedId: event.id,
+                                          );
+                                        }
+                                      }
+                                    : (value) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'No puedes habilitar a un deportista que aún no ha pagado la inscripción',
+                                            ),
+                                            backgroundColor: Color(0xFFF59E0B),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      },
                               ),
                             ),
                           );
@@ -186,15 +249,33 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
     );
   }
 
+  Widget _buildStatChip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
+          const Icon(
             Icons.people_outline,
             size: 64,
-            color: const Color(0xFFD1D5DB),
+            color: Color(0xFFD1D5DB),
           ),
           const SizedBox(height: 16),
           const Text(

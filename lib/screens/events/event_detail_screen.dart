@@ -1,25 +1,72 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/event_provider.dart';
+import '../../providers/payment_provider.dart';
+import '../../providers/notification_provider.dart';
+import '../payment/payment_checkout_screen.dart';
 
-class EventDetailScreen extends StatelessWidget {
+class EventDetailScreen extends StatefulWidget {
   final String eventId;
 
   const EventDetailScreen({super.key, required this.eventId});
 
   @override
+  State<EventDetailScreen> createState() => _EventDetailScreenState();
+}
+
+class _EventDetailScreenState extends State<EventDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<EventProvider>(context, listen: false).loadEvents();
+      Provider.of<PaymentProvider>(context, listen: false).loadPayments();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final eventProvider = Provider.of<EventProvider>(context);
+    final paymentProvider = Provider.of<PaymentProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
 
     final event = eventProvider.events.firstWhere(
-      (e) => e.id == eventId,
+      (e) => e.id == widget.eventId,
       orElse: () => eventProvider.events.first,
     );
+
+    final athleteId = authProvider.user?['id'] ?? '';
+    final hasPaid = paymentProvider.hasPaid(athleteId, event.id);
+    final isRegistered = event.isRegistered;
 
     final formattedDate = "${event.date.day}/${event.date.month}/${event.date.year}";
     final deadlineText = event.deadline != null
         ? "${event.deadline!.day}/${event.deadline!.month}/${event.deadline!.year}"
         : 'Sin fecha límite';
+
+    // Determinar estado del botón
+    String buttonText;
+    bool buttonEnabled;
+    Color buttonColor;
+    Color buttonTextColor;
+
+    if (!isRegistered) {
+      buttonText = 'Inscribirme al Evento';
+      buttonEnabled = true;
+      buttonColor = const Color(0xFF2563EB);
+      buttonTextColor = Colors.white;
+    } else if (!hasPaid) {
+      buttonText = 'Completar pago';
+      buttonEnabled = true;
+      buttonColor = const Color(0xFFF59E0B);
+      buttonTextColor = Colors.white;
+    } else {
+      buttonText = 'Inscripción completada';
+      buttonEnabled = false;
+      buttonColor = const Color(0xFFDEF7EC);
+      buttonTextColor = const Color(0xFF03543F);
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -60,7 +107,7 @@ class EventDetailScreen extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
+                                color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
@@ -76,7 +123,7 @@ class EventDetailScreen extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
+                                color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
@@ -103,7 +150,7 @@ class EventDetailScreen extends StatelessWidget {
                         Text(
                           event.description,
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: Colors.white.withOpacity(0.9),
                             fontSize: 14,
                           ),
                         ),
@@ -111,6 +158,58 @@ class EventDetailScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
+
+                  // Estado de inscripción y pago
+                  if (isRegistered) ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: hasPaid ? const Color(0xFFDEF7EC) : const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: hasPaid ? const Color(0xFF31C48D) : const Color(0xFFFCD34D),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            hasPaid ? Icons.check_circle : Icons.pending,
+                            color: hasPaid ? const Color(0xFF03543F) : const Color(0xFFD97706),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  hasPaid ? 'Pago completado' : 'Pago pendiente',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: hasPaid
+                                        ? const Color(0xFF03543F)
+                                        : const Color(0xFF92400E),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  hasPaid
+                                      ? 'Tu inscripción está confirmada. Espera a que tu entrenador te habilite.'
+                                      : 'Debes completar el pago para que tu entrenador te habilite.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: hasPaid
+                                        ? const Color(0xFF03543F)
+                                        : const Color(0xFFA16207),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
 
                   const Text(
                     'Información General',
@@ -161,25 +260,85 @@ class EventDetailScreen extends StatelessWidget {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: event.isRegistered
-                    ? null
-                    : () async {
-                        final success = await eventProvider.registerToEvent(event.id);
-                        if (success && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('¡Te has inscrito con éxito!'),
-                              duration: Duration(seconds: 2),
-                              behavior: SnackBarBehavior.floating,
-                            ),
+                onPressed: buttonEnabled
+                    ? () async {
+                        if (!isRegistered) {
+                          // Primera vez: crear pago e ir a checkout
+                          final paymentProvider = context.read<PaymentProvider>();
+                          final notificationProvider = context.read<NotificationProvider>();
+
+                          final payment = await paymentProvider.createPayment(
+                            eventId: event.id,
+                            eventTitle: event.title,
+                            athleteId: athleteId,
+                            athleteName: authProvider.user?['fullName'] ?? 'Deportista',
+                            athleteEmail: authProvider.user?['email'] ?? '',
+                            schoolId: event.schoolId,
+                            amount: event.price,
                           );
+
+                          if (payment == null) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Ya tienes un pago pendiente para este evento'),
+                                ),
+                              );
+                            }
+                            return;
+                          }
+
+                          if (context.mounted) {
+                            final result = await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PaymentCheckoutScreen(
+                                  payment: payment,
+                                  schoolName: authProvider.schoolName ?? 'Escuela',
+                                ),
+                              ),
+                            );
+
+                            if (result == true && context.mounted) {
+                              await eventProvider.registerToEvent(event.id);
+                              await notificationProvider.addNotification(
+                                userId: event.creatorId,
+                                title: 'Nueva inscripción pagada',
+                                message:
+                                    '${authProvider.user?['fullName'] ?? 'Un deportista'} pagó \$${event.price.toStringAsFixed(0)} e inscribió a ${event.title}',
+                                type: 'payment',
+                                relatedId: event.id,
+                              );
+                              setState(() {});
+                            }
+                          }
+                        } else if (!hasPaid) {
+                          // Ya inscrito pero sin pagar: ir a completar pago
+                          final payment = paymentProvider.payments.firstWhere(
+                            (p) => p.athleteId == athleteId && p.eventId == event.id,
+                          );
+
+                          if (context.mounted) {
+                            final result = await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PaymentCheckoutScreen(
+                                  payment: payment,
+                                  schoolName: authProvider.schoolName ?? 'Escuela',
+                                ),
+                              ),
+                            );
+
+                            if (result == true && context.mounted) {
+                              setState(() {});
+                            }
+                          }
                         }
-                      },
+                      }
+                    : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: event.isRegistered
-                      ? const Color(0xFFDEF7EC)
-                      : const Color(0xFF2563EB),
-                  disabledBackgroundColor: const Color(0xFFDEF7EC),
+                  backgroundColor: buttonColor,
+                  disabledBackgroundColor: buttonColor,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -187,13 +346,11 @@ class EventDetailScreen extends StatelessWidget {
                   elevation: 0,
                 ),
                 child: Text(
-                  event.isRegistered ? 'Ya estás inscrito' : 'Inscribirme al Evento',
+                  buttonText,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: event.isRegistered
-                        ? const Color(0xFF03543F)
-                        : Colors.white,
+                    color: buttonTextColor,
                   ),
                 ),
               ),
