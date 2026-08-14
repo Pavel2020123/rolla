@@ -11,6 +11,8 @@ import 'create_school_screen.dart';
 import 'join_school_screen.dart';
 import 'create_event_screen.dart';
 import 'athlete_detail_screen.dart';
+import 'wompi_config_screen.dart';
+import 'payments_received_screen.dart';
 import 'transfer_requests_screen.dart';
 import 'coach_events_screen.dart';
 import 'school_requests_screen.dart';
@@ -486,6 +488,36 @@ class _CoachHomeTab extends StatelessWidget {
                         ),
                       );
                     },
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildQuickActionCard(
+                title: 'Configurar Wompi',
+                subtitle: school?.wompiEnabled == true
+                    ? 'Wompi activo'
+                    : 'Recibe pagos directo a tu cuenta',
+                icon: Icons.payment_outlined,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const WompiConfigScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildQuickActionCard(
+                title: 'Pagos recibidos',
+                subtitle: 'Ver inscripciones pagadas',
+                icon: Icons.account_balance_wallet_outlined,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PaymentsReceivedScreen(),
+                    ),
                   );
                 },
               ),

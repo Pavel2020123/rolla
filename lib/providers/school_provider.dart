@@ -33,7 +33,7 @@ class SchoolProvider extends ChangeNotifier {
   }
 
   /// Crear una nueva escuela
-  Future<bool> createSchool({
+    Future<bool> createSchool({
     required String ownerId,
     required String name,
     required String description,
@@ -78,9 +78,43 @@ class SchoolProvider extends ChangeNotifier {
     }
   }
 
+
+
   /// Limpiar escuela (útil para logout)
   void clear() {
     _school = null;
     notifyListeners();
   }
+
+    /// Guardar configuración de Wompi para la escuela
+  Future<bool> saveWompiConfig({
+    required String publicKey,
+    required String privateKey,
+    required String integritySecret,
+  }) async {
+    if (_school == null) return false;
+
+    try {
+      final updated = _school!.copyWith(
+        wompiPublicKey: publicKey.trim(),
+        wompiPrivateKey: privateKey.trim(),
+        wompiIntegritySecret: integritySecret.trim(),
+        wompiEnabled: true,
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'rolla_school_${updated.ownerId}',
+        jsonEncode(updated.toJson()),
+      );
+
+      _school = updated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Error guardando Wompi: $e');
+      return false;
+    }
+  }
+
 }

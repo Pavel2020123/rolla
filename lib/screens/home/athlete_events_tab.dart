@@ -4,8 +4,10 @@ import '../../models/event_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/event_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/payment_provider.dart';
 import '../events/event_detail_screen.dart';
 import '../athlete/find_school_screen.dart';
+import '../payment/payment_checkout_screen.dart';
 
 class AthleteEventsTab extends StatefulWidget {
   const AthleteEventsTab({super.key});
@@ -186,9 +188,6 @@ class _AthleteEventsTabState extends State<AthleteEventsTab> {
 
   Widget _buildEventCard(BuildContext context, EventModel event) {
     final formattedDate = "${event.date.day}/${event.date.month}/${event.date.year}";
-    final eventProvider = Provider.of<EventProvider>(context, listen: false);
-    final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     return GestureDetector(
       onTap: () {
@@ -234,25 +233,65 @@ class _AthleteEventsTabState extends State<AthleteEventsTab> {
                   InkWell(
                     onTap: () async {
                       if (!event.isRegistered) {
-                        final success = await eventProvider.registerToEvent(event.id);
-                        if (success) {
-                          // Notificar al entrenador
-                          await notificationProvider.addNotification(
-                            userId: event.creatorId,
-                            title: 'Nueva inscripción',
-                            message: '${authProvider.user?['fullName'] ?? 'Un deportista'} se inscribió a ${event.title}',
-                            type: 'registration',
-                            relatedId: event.id,
-                          );
+                        // 1. Crear pago pendiente
+                        final paymentProvider = context.read<PaymentProvider>();
+                        final authProvider = context.read<AuthProvider>();
+                        final eventProvider = context.read<EventProvider>();
+                        final notificationProvider = context.read<NotificationProvider>();
 
+                        final payment = await paymentProvider.createPayment(
+                          eventId: event.id,
+                          eventTitle: event.title,
+                          athleteId: authProvider.user?['id'] ?? '',
+                          athleteName: authProvider.user?['fullName'] ?? 'Deportista',
+                          athleteEmail: authProvider.user?['email'] ?? '',
+                          schoolId: event.schoolId,
+                          amount: event.price,
+                        );
+
+                        if (payment == null) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('¡Te has inscrito con éxito!'),
-                                duration: Duration(seconds: 2),
-                                behavior: SnackBarBehavior.floating,
-                              ),
+                              const SnackBar(content: Text('Ya tienes un pago pendiente para este evento')),
                             );
+                          }
+                          return;
+                        }
+
+                        // 2. Ir a checkout
+                        if (context.mounted) {
+                          final result = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PaymentCheckoutScreen(
+                                payment: payment,
+                                schoolName: authProvider.schoolName ?? 'Escuela',
+                              ),
+                            ),
+                          );
+
+                          // 3. Si pagó exitosamente
+                          if (result == true) {
+                            await eventProvider.registerToEvent(event.id);
+
+                            // Notificar al entrenador
+                            await notificationProvider.addNotification(
+                              userId: event.creatorId,
+                              title: 'Nueva inscripción pagada',
+                              message: '${authProvider.user?['fullName'] ?? 'Un deportista'} pagó \$${event.price.toStringAsFixed(0)} e inscribió a ${event.title}',
+                              type: 'payment',
+                              relatedId: event.id,
+                            );
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('¡Inscripción y pago completados!'),
+                                  backgroundColor: Color(0xFF31C48D),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
                           }
                         }
                       }

@@ -9,6 +9,7 @@ import 'providers/school_provider.dart';
 import 'providers/school_history_provider.dart';
 import 'providers/school_request_provider.dart';
 import 'providers/event_provider.dart';
+import 'providers/payment_provider.dart';
 import 'providers/transfer_provider.dart';
 
 // Screens
@@ -29,6 +30,7 @@ class MyApp extends StatelessWidget {
           ChangeNotifierProvider(create: (_) => AthleteProvider()),
           ChangeNotifierProvider(create: (_) => SchoolProvider()),
           ChangeNotifierProvider(create: (_) => TransferProvider()),
+          ChangeNotifierProvider(create: (_) => PaymentProvider()),
           ChangeNotifierProvider(create: (_) => SchoolRequestProvider()),
           ChangeNotifierProvider(create: (_) => EventProvider()),
           ChangeNotifierProvider(create: (_) => NotificationProvider()),
