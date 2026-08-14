@@ -4,6 +4,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/event_provider.dart';
 import '../../providers/school_provider.dart';
 import '../../providers/school_request_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../models/event_model.dart';
 import '../../models/school_request_model.dart';
 
@@ -63,7 +64,6 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Info del evento
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -151,12 +151,27 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
                               ),
                               trailing: Switch(
                                 value: isEnabled,
-                                activeThumbColor: const Color(0xFF2563EB),
+                                activeColor: const Color(0xFF2563EB),
                                 onChanged: (value) async {
+                                  final eventProvider =
+                                      Provider.of<EventProvider>(context, listen: false);
+                                  final notificationProvider =
+                                      Provider.of<NotificationProvider>(context, listen: false);
+
                                   await eventProvider.toggleAthleteForEvent(
                                     event.id,
                                     athlete.athleteId,
                                   );
+
+                                  if (value) {
+                                    await notificationProvider.addNotification(
+                                      userId: athlete.athleteId,
+                                      title: 'Habilitado para evento',
+                                      message: 'Tu entrenador te habilitó para participar en: ${event.title}',
+                                      type: 'event',
+                                      relatedId: event.id,
+                                    );
+                                  }
                                 },
                               ),
                             ),

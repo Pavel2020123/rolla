@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rolla/models/school_request_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/school_provider.dart';
 import '../../providers/school_request_provider.dart';
@@ -57,7 +56,6 @@ class _CoachMainScreenState extends State<CoachMainScreen> {
 
         final hasSchool = schoolProvider.hasSchool;
 
-        // 🔥 Lista actualizada con 5 pestañas
         final screens = [
           _CoachHomeTab(hasSchool: hasSchool),
           _CoachSchoolTab(hasSchool: hasSchool),
@@ -79,7 +77,6 @@ class _CoachMainScreenState extends State<CoachMainScreen> {
                 ),
               ],
             ),
-            // 🔥 Envolvemos el BottomNavigationBar con el Consumer de notificaciones
             child: Consumer<NotificationProvider>(
               builder: (context, notifProvider, child) {
                 final userId = Provider.of<AuthProvider>(context).user?['id'] ?? '';
@@ -95,7 +92,6 @@ class _CoachMainScreenState extends State<CoachMainScreen> {
                   selectedFontSize: 12,
                   unselectedFontSize: 12,
                   elevation: 0,
-                  // Nota: quitamos el "const" del array items porque ahora contiene datos dinámicos (unreadCount)
                   items: [
                     const BottomNavigationBarItem(
                       icon: Padding(
@@ -130,7 +126,6 @@ class _CoachMainScreenState extends State<CoachMainScreen> {
                       ),
                       label: 'Deportistas',
                     ),
-                    // 🔥 PESTAÑA NOTIFICACIONES (con badge rojo dinámico)
                     BottomNavigationBarItem(
                       icon: Padding(
                         padding: const EdgeInsets.only(bottom: 4.0),
@@ -200,7 +195,6 @@ class _CoachMainScreenState extends State<CoachMainScreen> {
                       ),
                       label: 'Notificaciones',
                     ),
-                    // 🔥 PESTAÑA PERFIL (Restaurada al final)
                     const BottomNavigationBarItem(
                       icon: Padding(
                         padding: EdgeInsets.only(bottom: 4.0),
@@ -222,9 +216,6 @@ class _CoachMainScreenState extends State<CoachMainScreen> {
     );
   }
 }
-
-// Nota: Asumo que las clases privadas (_CoachHomeTab, _CoachSchoolTab, _CoachAthletesTab, _CoachProfileTab) 
-// están definidas más abajo en tu mismo archivo original. Si es así, asegúrate de no borrarlas al pegar esto.
 
 // ============================================================
 // PESTAÑA: PANEL (HOME)
@@ -268,7 +259,6 @@ class _CoachHomeTab extends StatelessWidget {
             const SizedBox(height: 32),
 
             if (!hasSchool) ...[
-              // Estado: SIN ESCUELA
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -345,8 +335,7 @@ class _CoachHomeTab extends StatelessWidget {
               ),
               const SizedBox(height: 24),
             ] else ...[
-              // Estado: CON ESCUELA → Tarjetas de resumen
-                            Row(
+              Row(
                 children: [
                   Expanded(
                     child: Consumer<SchoolRequestProvider>(
@@ -365,7 +354,7 @@ class _CoachHomeTab extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                                    Expanded(
+                  Expanded(
                     child: Consumer<EventProvider>(
                       builder: (context, eventProvider, child) {
                         final schoolId = schoolProvider.school?.id ?? '';
@@ -413,7 +402,7 @@ class _CoachHomeTab extends StatelessWidget {
               const SizedBox(height: 32),
             ],
 
-                        const Text(
+            const Text(
               'Accesos rápidos',
               style: TextStyle(
                 fontSize: 18,
@@ -445,7 +434,6 @@ class _CoachHomeTab extends StatelessWidget {
                 onTap: () {},
               ),
               const SizedBox(height: 12),
-              // NUEVO: Acceso a solicitudes con badge
               Consumer<SchoolRequestProvider>(
                 builder: (context, reqProvider, child) {
                   final pendingCount = reqProvider.pendingCount;
@@ -467,8 +455,8 @@ class _CoachHomeTab extends StatelessWidget {
                   );
                 },
               ),
-                            const SizedBox(height: 12),
-                            Consumer<EventProvider>(
+              const SizedBox(height: 12),
+              Consumer<EventProvider>(
                 builder: (context, eventProvider, child) {
                   final schoolId = schoolProvider.school?.id ?? '';
                   final eventCount = schoolId.isNotEmpty
@@ -573,7 +561,7 @@ class _CoachHomeTab extends StatelessWidget {
     );
   }
 
-    Widget _buildQuickActionCard({
+  Widget _buildQuickActionCard({
     required String title,
     required String subtitle,
     required IconData icon,
@@ -753,7 +741,6 @@ class _CoachSchoolTab extends StatelessWidget {
       );
     }
 
-    // Tiene escuela → mostrar datos
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -891,7 +878,7 @@ class _CoachAthletesTabState extends State<_CoachAthletesTab> {
     final schoolId = schoolProvider.school?.id ?? authProvider.schoolId ?? '';
     final acceptedAthletes = schoolId.isNotEmpty
         ? requestProvider.getAcceptedAthletesForSchool(schoolId)
-        : <SchoolRequestModel>[];
+        : [];
 
     return SafeArea(
       child: Padding(
@@ -1022,9 +1009,7 @@ class _CoachAthletesTabState extends State<_CoachAthletesTab> {
                           size: 16,
                           color: Color(0xFF9CA3AF),
                         ),
-                        onTap: () {
-                          // Aquí podremos ver el perfil del deportista luego
-                        },
+                        onTap: () {},
                       ),
                     );
                   },
