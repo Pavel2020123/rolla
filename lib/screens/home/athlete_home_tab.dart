@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:rolla/screens/athlete/find_school_screen.dart';
@@ -30,49 +31,80 @@ class AthleteHomeTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Saludo
+            // Saludo con foto real
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Hola, ${athlete.firstName} 👋',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1F2937),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Hola, ${athlete.firstName} 👋',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1F2937),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      hasSchool
-                          ? (authProvider.schoolName ?? 'Sin escuela')
-                          : 'Sin escuela asignada',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF6B7280),
+                      const SizedBox(height: 4),
+                      Text(
+                        hasSchool
+                            ? (authProvider.schoolName ?? 'Sin escuela')
+                            : 'Sin escuela asignada',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: hasSchool
+                              ? const Color(0xFF6B7280)
+                              : const Color(0xFFD97706),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: const Color(0xFFEFF6FF),
-                  child: Text(
-                    athlete.initials,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2563EB),
-                    ),
+                      if (athlete.modality != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          '${athlete.category} • ${athlete.level} • ${athlete.modality}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
+                ),
+                // AVATAR CON FOTO REAL
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(26),
+                    border: Border.all(color: const Color(0xFF2563EB), width: 2),
+                    image: athlete.photoUrl != null
+                        ? DecorationImage(
+                            image: FileImage(File(athlete.photoUrl!)),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: athlete.photoUrl == null
+                      ? Center(
+                          child: Text(
+                            athlete.initials,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
               ],
             ),
             const SizedBox(height: 24),
 
-            // Si NO tiene escuela, mostrar alerta + botón
+            // Si NO tiene escuela, mostrar alerta
             if (!hasSchool) ...[
               Container(
                 padding: const EdgeInsets.all(20),
@@ -128,7 +160,7 @@ class AthleteHomeTab extends StatelessWidget {
               const SizedBox(height: 24),
             ],
 
-            // Resumen de temporada
+            // Resumen de temporada con medallero
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -146,13 +178,14 @@ class AthleteHomeTab extends StatelessWidget {
                     'Resumen de Temporada',
                     style: TextStyle(color: Colors.white70, fontSize: 14),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _buildStatItem('Participaciones', athlete.participationsCount.toString()),
-                      _buildStatItem('Medallas', athlete.totalMedals.toString()),
-                      _buildStatItem('Nivel', athlete.level),
+                      _buildStatItem('Oro', athlete.goldMedals.toString(), color: const Color(0xFFFBBF24)),
+                      _buildStatItem('Plata', athlete.silverMedals.toString(), color: const Color(0xFFD1D5DB)),
+                      _buildStatItem('Bronce', athlete.bronzeMedals.toString(), color: const Color(0xFFB45309)),
                     ],
                   ),
                 ],
@@ -203,7 +236,7 @@ class AthleteHomeTab extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${events.first.location} • ${events.first.status}',
+                            '${events.first.location} • ${events.first.modality}',
                             style: const TextStyle(
                               fontSize: 13,
                               color: Color(0xFF6B7280),
@@ -227,23 +260,27 @@ class AthleteHomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+  Widget _buildStatItem(String label, String value, {Color? color}) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: color ?? Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontSize: 11),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 }

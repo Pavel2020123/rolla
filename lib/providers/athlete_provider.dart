@@ -26,9 +26,32 @@ class AthleteProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // --- Carga del Perfil ---
+      // --- Carga del Perfil: primero intenta usuario real, luego cache, luego mock ---
+      final String? userData = prefs.getString('rolla_user');
       final String? cachedData = prefs.getString('cached_athlete');
-      if (cachedData != null) {
+
+      if (userData != null) {
+        final user = jsonDecode(userData);
+        _athlete = AthleteModel(
+          id: user['id'] ?? 'ath_${DateTime.now().millisecondsSinceEpoch}',
+          firstName: user['firstName'] ?? user['fullName']?.split(' ').first ?? 'Usuario',
+          lastName: user['lastName'] ?? (user['fullName']?.split(' ').length > 1 
+            ? user['fullName'].split(' ').sublist(1).join(' ') 
+            : ''),
+          role: user['role'] ?? 'Deportista',
+          schoolName: user['schoolName'] ?? 'Sin escuela',
+          category: user['category'] ?? 'Prejuvenil',
+          level: user['level'] ?? 'Principiante',
+          modality: user['modality'],
+          photoUrl: user['photoUrl'],
+          birthDate: user['birthDate'] != null ? DateTime.tryParse(user['birthDate']) : null,
+          email: user['email'],
+          participationsCount: user['participationsCount'] ?? 0,
+          goldMedals: user['goldMedals'] ?? 0,
+          silverMedals: user['silverMedals'] ?? 0,
+          bronzeMedals: user['bronzeMedals'] ?? 0,
+        );
+      } else if (cachedData != null) {
         final Map<String, dynamic> decodedData = jsonDecode(cachedData);
         _athlete = AthleteModel.fromJson(decodedData);
       } else {
@@ -46,6 +69,9 @@ class AthleteProvider extends ChangeNotifier {
 
       // --- Carga de Resultados ---
       _results = await MockService.getResultsHistory();
+
+      // Recalcular medallas desde resultados reales
+      recalculateMedalsFromResults();
     } catch (e) {
       debugPrint('Error cargando datos: $e');
     } finally {
@@ -55,7 +81,7 @@ class AthleteProvider extends ChangeNotifier {
   }
 
   /// Ejemplo de acción global: Inscribirse/desinscribirse a un evento
-    void toggleEventRegistration(String eventId) {
+  void toggleEventRegistration(String eventId) {
     final index = _events.indexWhere((e) => e.id == eventId);
     if (index != -1) {
       final currentEvent = _events[index];
@@ -75,6 +101,10 @@ class AthleteProvider extends ChangeNotifier {
     required String lastName,
     required String schoolName,
     required String category,
+    String? level,
+    String? modality,
+    String? photoUrl,
+    DateTime? birthDate,
   }) {
     if (_athlete != null) {
       _athlete = AthleteModel(
@@ -84,7 +114,11 @@ class AthleteProvider extends ChangeNotifier {
         role: _athlete!.role,
         schoolName: schoolName,
         category: category,
-        level: _athlete!.level,
+        level: level ?? _athlete!.level,
+        modality: modality ?? _athlete!.modality,
+        photoUrl: photoUrl ?? _athlete!.photoUrl,
+        birthDate: birthDate ?? _athlete!.birthDate,
+        email: _athlete!.email,
         participationsCount: _athlete!.participationsCount,
         goldMedals: _athlete!.goldMedals,
         silverMedals: _athlete!.silverMedals,
@@ -92,9 +126,8 @@ class AthleteProvider extends ChangeNotifier {
       );
 
       notifyListeners();
-
-      // Guardado local de los cambios
       _saveAthleteToCache();
+      _savePublicProfile();
     }
   }
 
@@ -107,10 +140,51 @@ class AthleteProvider extends ChangeNotifier {
     }
   }
 
+  /// Guarda una copia pública del perfil para que entrenadores la vean
+  Future<void> _savePublicProfile() async {
+    if (_athlete?.email == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'rolla_public_profile_${_athlete!.email}',
+      jsonEncode(_athlete!.toJson()),
+    );
+  }
+
   /// Guarda la lista de eventos en la memoria del dispositivo
   Future<void> _saveEventsToCache() async {
     final prefs = await SharedPreferences.getInstance();
     final String eventsJson = jsonEncode(_events.map((e) => e.toJson()).toList());
     await prefs.setString('cached_events', eventsJson);
+  }
+
+  /// Recalcula oro/plata/bronce desde la lista de resultados reales
+  void recalculateMedalsFromResults() {
+    if (_athlete == null) return;
+
+    int gold = 0, silver = 0, bronze = 0;
+    for (var r in _results) {
+      switch (r.medalType) {
+        case MedalType.gold:
+          gold++;
+          break;
+        case MedalType.silver:
+          silver++;
+          break;
+        case MedalType.bronze:
+          bronze++;
+          break;
+        default:
+          break;
+      }
+    }
+
+    _athlete = _athlete!.copyWith(
+      goldMedals: gold,
+      silverMedals: silver,
+      bronzeMedals: bronze,
+    );
+
+    notifyListeners();
+    _saveAthleteToCache();
   }
 }

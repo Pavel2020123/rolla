@@ -43,7 +43,7 @@ class AuthProvider extends ChangeNotifier {
     return false;
   }
 
-  Future<bool> register({
+    Future<bool> register({
     required String fullName,
     required String email,
     required String password,
@@ -60,14 +60,30 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
+      final parts = fullName.trim().split(' ');
+      final firstName = parts.first;
+      final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+
       final newUser = {
         'id': 'usr_${DateTime.now().millisecondsSinceEpoch}',
         'fullName': fullName,
+        'firstName': firstName,
+        'lastName': lastName,
         'email': email,
         'password': password,
         'createdAt': DateTime.now().toIso8601String(),
         'schoolId': null,
         'schoolName': null,
+        // Datos deportivos por defecto
+        'category': 'Prejuvenil',
+        'level': 'Principiante',
+        'modality': 'Velocidad',
+        'photoUrl': null,
+        'birthDate': null,
+        'participationsCount': 0,
+        'goldMedals': 0,
+        'silverMedals': 0,
+        'bronzeMedals': 0,
       };
 
       await prefs.setString('rolla_user_$email', jsonEncode(newUser));
@@ -152,12 +168,56 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Asignar escuela al usuario actual
+    /// Asignar escuela al usuario actual + guardar historial
   Future<void> assignSchool(String schoolId, String schoolName) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final String? email = prefs.getString('rolla_current_email');
 
       if (email != null && _user != null) {
+        final String userId = _user!['id'] ?? '';
+
+        // Guardar escuela anterior en historial si tenía
+        final String? prevSchoolId = _user!['schoolId'] as String?;
+        if (prevSchoolId != null && prevSchoolId.isNotEmpty) {
+          final String? prevSchoolName = _user!['schoolName'] as String?;
+          final String? existingHistory = prefs.getString('rolla_school_history_$userId');
+          List<dynamic> history = existingHistory != null ? jsonDecode(existingHistory) : [];
+
+          // Cerrar entrada anterior
+          for (var entry in history) {
+            if (entry['leftAt'] == null) {
+              entry['leftAt'] = DateTime.now().toIso8601String();
+              entry['reason'] = 'transfer';
+            }
+          }
+
+          // Nueva entrada
+          history.add({
+            'id': 'hist_${DateTime.now().millisecondsSinceEpoch}',
+            'schoolId': schoolId,
+            'schoolName': schoolName,
+            'joinedAt': DateTime.now().toIso8601String(),
+            'leftAt': null,
+            'reason': null,
+          });
+
+          await prefs.setString('rolla_school_history_$userId', jsonEncode(history));
+        } else {
+          // Primera vez que entra a una escuela
+          final String? existingHistory = prefs.getString('rolla_school_history_$userId');
+          List<dynamic> history = existingHistory != null ? jsonDecode(existingHistory) : [];
+          history.add({
+            'id': 'hist_${DateTime.now().millisecondsSinceEpoch}',
+            'schoolId': schoolId,
+            'schoolName': schoolName,
+            'joinedAt': DateTime.now().toIso8601String(),
+            'leftAt': null,
+            'reason': null,
+          });
+          await prefs.setString('rolla_school_history_$userId', jsonEncode(history));
+        }
+
         _user!['schoolId'] = schoolId;
         _user!['schoolName'] = schoolName;
 
@@ -171,12 +231,30 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Quitar escuela (quedar libre)
+    /// Quitar escuela (quedar libre) + guardar historial
   Future<void> leaveSchool() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final String? email = prefs.getString('rolla_current_email');
 
       if (email != null && _user != null) {
+        final String userId = _user!['id'] ?? '';
+        final String? prevSchoolId = _user!['schoolId'] as String?;
+
+        if (prevSchoolId != null && prevSchoolId.isNotEmpty) {
+          final String? existingHistory = prefs.getString('rolla_school_history_$userId');
+          List<dynamic> history = existingHistory != null ? jsonDecode(existingHistory) : [];
+
+          for (var entry in history) {
+            if (entry['leftAt'] == null) {
+              entry['leftAt'] = DateTime.now().toIso8601String();
+              entry['reason'] = 'free_agent';
+            }
+          }
+
+          await prefs.setString('rolla_school_history_$userId', jsonEncode(history));
+        }
+
         _user!['schoolId'] = null;
         _user!['schoolName'] = null;
 
@@ -233,4 +311,40 @@ class AuthProvider extends ChangeNotifier {
       debugPrint('Error en logout: $e');
     }
   }
+
+    /// Actualizar datos deportivos del perfil
+  Future<void> updateAthleteProfile({
+    String? firstName,
+    String? lastName,
+    String? category,
+    String? level,
+    String? modality,
+    String? photoUrl,
+    DateTime? birthDate,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? email = prefs.getString('rolla_current_email');
+
+      if (email != null && _user != null) {
+        if (firstName != null) _user!['firstName'] = firstName;
+        if (lastName != null) _user!['lastName'] = lastName;
+        if (firstName != null || lastName != null) {
+          _user!['fullName'] = '${_user!['firstName']} ${_user!['lastName']}'.trim();
+        }
+        if (category != null) _user!['category'] = category;
+        if (level != null) _user!['level'] = level;
+        if (modality != null) _user!['modality'] = modality;
+        if (photoUrl != null) _user!['photoUrl'] = photoUrl;
+        if (birthDate != null) _user!['birthDate'] = birthDate.toIso8601String();
+
+        await prefs.setString('rolla_user', jsonEncode(_user));
+        await prefs.setString('rolla_user_$email', jsonEncode(_user));
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error actualizando perfil deportivo: $e');
+    }
+  }
+
 }

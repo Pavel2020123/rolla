@@ -6,6 +6,7 @@ import 'providers/auth_provider.dart';
 import 'providers/athlete_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/school_provider.dart';
+import 'providers/school_history_provider.dart';
 import 'providers/school_request_provider.dart';
 import 'providers/event_provider.dart';
 import 'providers/transfer_provider.dart';
@@ -23,15 +24,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => AthleteProvider()),
-        ChangeNotifierProvider(create: (_) => SchoolProvider()),
-        ChangeNotifierProvider(create: (_) => TransferProvider()),
-        ChangeNotifierProvider(create: (_) => SchoolRequestProvider()),
-        ChangeNotifierProvider(create: (_) => EventProvider()),
-        ChangeNotifierProvider(create: (_) => NotificationProvider()),
-      ],
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => AthleteProvider()),
+          ChangeNotifierProvider(create: (_) => SchoolProvider()),
+          ChangeNotifierProvider(create: (_) => TransferProvider()),
+          ChangeNotifierProvider(create: (_) => SchoolRequestProvider()),
+          ChangeNotifierProvider(create: (_) => EventProvider()),
+          ChangeNotifierProvider(create: (_) => NotificationProvider()),
+          ChangeNotifierProvider(create: (_) => SchoolHistoryProvider()),  // <-- NUEVO
+        ],
       child: MaterialApp(
         title: 'Rolla',
         debugShowCheckedModeBanner: false,

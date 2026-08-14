@@ -10,6 +10,7 @@ import '../notifications_screen.dart';
 import 'create_school_screen.dart';
 import 'join_school_screen.dart';
 import 'create_event_screen.dart';
+import 'athlete_detail_screen.dart';
 import 'transfer_requests_screen.dart';
 import 'coach_events_screen.dart';
 import 'school_requests_screen.dart';
@@ -1017,7 +1018,17 @@ class _CoachAthletesTabState extends State<_CoachAthletesTab> {
                           size: 16,
                           color: Color(0xFF9CA3AF),
                         ),
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AthleteDetailScreen(
+                                athleteName: athlete.athleteName,
+                                athleteEmail: athlete.athleteEmail,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     );
                   },
