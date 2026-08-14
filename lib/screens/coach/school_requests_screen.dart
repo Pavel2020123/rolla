@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/school_provider.dart';
 import '../../providers/school_request_provider.dart';
+import '../../providers/notification_provider.dart'; // 🔥 Import agregado
 import '../../models/school_request_model.dart';
 
 class SchoolRequestsScreen extends StatefulWidget {
@@ -21,19 +22,45 @@ class _SchoolRequestsScreenState extends State<SchoolRequestsScreen> {
     });
   }
 
+  // 🔥 7A: Modificado para notificar cuando se ACEPTA
   Future<void> _acceptRequest(SchoolRequestModel request) async {
     final requestProvider =
         Provider.of<SchoolRequestProvider>(context, listen: false);
+    final notificationProvider =
+        Provider.of<NotificationProvider>(context, listen: false);
+
     await requestProvider.acceptRequest(request.id);
+
+    // Notificar al deportista
+    await notificationProvider.addNotification(
+      userId: request.athleteId,
+      title: '¡Solicitud aceptada!',
+      message: 'Has sido aceptado en ${request.schoolName}. Bienvenido.',
+      type: 'request',
+      relatedId: request.id,
+    );
 
     if (!mounted) return;
     _showMessage('${request.athleteName} ha sido aceptado en la escuela');
   }
 
+  // 🔥 7B: Modificado para notificar cuando se RECHAZA
   Future<void> _rejectRequest(SchoolRequestModel request) async {
     final requestProvider =
         Provider.of<SchoolRequestProvider>(context, listen: false);
+    final notificationProvider =
+        Provider.of<NotificationProvider>(context, listen: false);
+
     await requestProvider.rejectRequest(request.id);
+
+    // Notificar al deportista
+    await notificationProvider.addNotification(
+      userId: request.athleteId,
+      title: 'Solicitud rechazada',
+      message: 'Tu solicitud para unirte a ${request.schoolName} fue rechazada.',
+      type: 'request',
+      relatedId: request.id,
+    );
 
     if (!mounted) return;
     _showMessage('Solicitud de ${request.athleteName} rechazada');

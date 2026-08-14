@@ -151,7 +151,7 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
                               ),
                               trailing: Switch(
                                 value: isEnabled,
-                                activeColor: const Color(0xFF2563EB),
+                                activeThumbColor: const Color(0xFF2563EB),
                                 onChanged: (value) async {
                                   await eventProvider.toggleAthleteForEvent(
                                     event.id,

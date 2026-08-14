@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
-import '../../models/school_request_model.dart';
 import 'package:provider/provider.dart';
-import 'package:rolla/providers/school_request_provider.dart';
+import 'package:rolla/models/school_request_model.dart';
 import '../../providers/auth_provider.dart';
-import 'coach_events_screen.dart';
 import '../../providers/school_provider.dart';
-import '../auth/splash_screen.dart';
-import 'create_event_screen.dart';
-import 'create_school_screen.dart';
-import 'school_requests_screen.dart';
-import 'join_school_screen.dart';
+import '../../providers/school_request_provider.dart';
 import '../../providers/event_provider.dart';
+import '../../providers/notification_provider.dart';
+import '../auth/splash_screen.dart';
+import '../notifications_screen.dart';
+import 'create_school_screen.dart';
+import 'join_school_screen.dart';
+import 'create_event_screen.dart';
+import 'coach_events_screen.dart';
+import 'school_requests_screen.dart';
 
 class CoachMainScreen extends StatefulWidget {
   const CoachMainScreen({super.key});
@@ -23,21 +25,19 @@ class _CoachMainScreenState extends State<CoachMainScreen> {
   int _selectedIndex = 0;
 
   @override
-void initState() {
-  super.initState();
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final ownerId = authProvider.user?['id'] ?? '';
-
-    if (ownerId.isNotEmpty) {
-      Provider.of<SchoolProvider>(context, listen: false)
-          .loadSchool(ownerId);
-    }
-
-    Provider.of<EventProvider>(context, listen: false).loadEvents();
-    Provider.of<SchoolRequestProvider>(context, listen: false).loadRequests();
-  });
-}
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final ownerId = authProvider.user?['id'] ?? '';
+      if (ownerId.isNotEmpty) {
+        Provider.of<SchoolProvider>(context, listen: false).loadSchool(ownerId);
+      }
+      Provider.of<EventProvider>(context, listen: false).loadEvents();
+      Provider.of<SchoolRequestProvider>(context, listen: false).loadRequests();
+      Provider.of<NotificationProvider>(context, listen: false).loadNotifications();
+    });
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -57,10 +57,12 @@ void initState() {
 
         final hasSchool = schoolProvider.hasSchool;
 
+        // 🔥 Lista actualizada con 5 pestañas
         final screens = [
           _CoachHomeTab(hasSchool: hasSchool),
           _CoachSchoolTab(hasSchool: hasSchool),
           const _CoachAthletesTab(),
+          const NotificationsScreen(),
           const _CoachProfileTab(),
         ];
 
@@ -77,62 +79,142 @@ void initState() {
                 ),
               ],
             ),
-            child: BottomNavigationBar(
-              currentIndex: _selectedIndex,
-              onTap: _onItemTapped,
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: Colors.white,
-              selectedItemColor: const Color(0xFF2563EB),
-              unselectedItemColor: const Color(0xFF9CA3AF),
-              selectedFontSize: 12,
-              unselectedFontSize: 12,
-              elevation: 0,
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Padding(
-                    padding: EdgeInsets.only(bottom: 4.0),
-                    child: Icon(Icons.dashboard_outlined),
-                  ),
-                  activeIcon: Padding(
-                    padding: EdgeInsets.only(bottom: 4.0),
-                    child: Icon(Icons.dashboard),
-                  ),
-                  label: 'Panel',
-                ),
-                BottomNavigationBarItem(
-                  icon: Padding(
-                    padding: EdgeInsets.only(bottom: 4.0),
-                    child: Icon(Icons.school_outlined),
-                  ),
-                  activeIcon: Padding(
-                    padding: EdgeInsets.only(bottom: 4.0),
-                    child: Icon(Icons.school),
-                  ),
-                  label: 'Escuela',
-                ),
-                BottomNavigationBarItem(
-                  icon: Padding(
-                    padding: EdgeInsets.only(bottom: 4.0),
-                    child: Icon(Icons.people_outlined),
-                  ),
-                  activeIcon: Padding(
-                    padding: EdgeInsets.only(bottom: 4.0),
-                    child: Icon(Icons.people),
-                  ),
-                  label: 'Deportistas',
-                ),
-                BottomNavigationBarItem(
-                  icon: Padding(
-                    padding: EdgeInsets.only(bottom: 4.0),
-                    child: Icon(Icons.person_outline),
-                  ),
-                  activeIcon: Padding(
-                    padding: EdgeInsets.only(bottom: 4.0),
-                    child: Icon(Icons.person),
-                  ),
-                  label: 'Perfil',
-                ),
-              ],
+            // 🔥 Envolvemos el BottomNavigationBar con el Consumer de notificaciones
+            child: Consumer<NotificationProvider>(
+              builder: (context, notifProvider, child) {
+                final userId = Provider.of<AuthProvider>(context).user?['id'] ?? '';
+                final unreadCount = notifProvider.getUnreadCountForUser(userId);
+
+                return BottomNavigationBar(
+                  currentIndex: _selectedIndex,
+                  onTap: _onItemTapped,
+                  type: BottomNavigationBarType.fixed,
+                  backgroundColor: Colors.white,
+                  selectedItemColor: const Color(0xFF2563EB),
+                  unselectedItemColor: const Color(0xFF9CA3AF),
+                  selectedFontSize: 12,
+                  unselectedFontSize: 12,
+                  elevation: 0,
+                  // Nota: quitamos el "const" del array items porque ahora contiene datos dinámicos (unreadCount)
+                  items: [
+                    const BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 4.0),
+                        child: Icon(Icons.dashboard_outlined),
+                      ),
+                      activeIcon: Padding(
+                        padding: EdgeInsets.only(bottom: 4.0),
+                        child: Icon(Icons.dashboard),
+                      ),
+                      label: 'Panel',
+                    ),
+                    const BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 4.0),
+                        child: Icon(Icons.school_outlined),
+                      ),
+                      activeIcon: Padding(
+                        padding: EdgeInsets.only(bottom: 4.0),
+                        child: Icon(Icons.school),
+                      ),
+                      label: 'Escuela',
+                    ),
+                    const BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 4.0),
+                        child: Icon(Icons.people_outlined),
+                      ),
+                      activeIcon: Padding(
+                        padding: EdgeInsets.only(bottom: 4.0),
+                        child: Icon(Icons.people),
+                      ),
+                      label: 'Deportistas',
+                    ),
+                    // 🔥 PESTAÑA NOTIFICACIONES (con badge rojo dinámico)
+                    BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: const EdgeInsets.only(bottom: 4.0),
+                        child: Stack(
+                          children: [
+                            const Icon(Icons.notifications_outlined),
+                            if (unreadCount > 0)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFEF4444),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 14,
+                                    minHeight: 14,
+                                  ),
+                                  child: Text(
+                                    unreadCount > 9 ? '9+' : '$unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      activeIcon: Padding(
+                        padding: const EdgeInsets.only(bottom: 4.0),
+                        child: Stack(
+                          children: [
+                            const Icon(Icons.notifications),
+                            if (unreadCount > 0)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFEF4444),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 14,
+                                    minHeight: 14,
+                                  ),
+                                  child: Text(
+                                    unreadCount > 9 ? '9+' : '$unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      label: 'Notificaciones',
+                    ),
+                    // 🔥 PESTAÑA PERFIL (Restaurada al final)
+                    const BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 4.0),
+                        child: Icon(Icons.person_outline),
+                      ),
+                      activeIcon: Padding(
+                        padding: EdgeInsets.only(bottom: 4.0),
+                        child: Icon(Icons.person),
+                      ),
+                      label: 'Perfil',
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         );
@@ -140,6 +222,9 @@ void initState() {
     );
   }
 }
+
+// Nota: Asumo que las clases privadas (_CoachHomeTab, _CoachSchoolTab, _CoachAthletesTab, _CoachProfileTab) 
+// están definidas más abajo en tu mismo archivo original. Si es así, asegúrate de no borrarlas al pegar esto.
 
 // ============================================================
 // PESTAÑA: PANEL (HOME)
@@ -311,11 +396,16 @@ class _CoachHomeTab extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildStatCard(
-                      title: 'Solicitudes',
-                      value: '0',
-                      icon: Icons.swap_horiz,
-                      color: const Color(0xFFEF4444),
+                    child: Consumer<SchoolRequestProvider>(
+                      builder: (context, reqProvider, child) {
+                        final count = reqProvider.pendingCount;
+                        return _buildStatCard(
+                          title: 'Solicitudes',
+                          value: count.toString(),
+                          icon: Icons.swap_horiz,
+                          color: const Color(0xFFEF4444),
+                        );
+                      },
                     ),
                   ),
                 ],
