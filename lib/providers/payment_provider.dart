@@ -1,28 +1,28 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/payment_model.dart';
+import '../repositories/local_payment_repository.dart';
+import '../repositories/payment_repository.dart';
 
 class PaymentProvider extends ChangeNotifier {
+  final PaymentRepository _repository;
   List<PaymentModel> _payments = [];
   bool _isLoading = false;
+
+  PaymentProvider({PaymentRepository? repository})
+    : _repository = repository ?? LocalPaymentRepository();
 
   List<PaymentModel> get payments => List.unmodifiable(_payments);
   bool get isLoading => _isLoading;
 
   /// Pagos de una escuela específica
   List<PaymentModel> getPaymentsBySchool(String schoolId) {
-    return _payments
-        .where((p) => p.schoolId == schoolId)
-        .toList()
+    return _payments.where((p) => p.schoolId == schoolId).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   /// Pagos de un deportista específico
   List<PaymentModel> getPaymentsByAthlete(String athleteId) {
-    return _payments
-        .where((p) => p.athleteId == athleteId)
-        .toList()
+    return _payments.where((p) => p.athleteId == athleteId).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
@@ -45,12 +45,7 @@ class PaymentProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? data = prefs.getString('rolla_payments');
-      if (data != null) {
-        final List<dynamic> decoded = jsonDecode(data);
-        _payments = decoded.map((e) => PaymentModel.fromJson(e)).toList();
-      }
+      _payments = await _repository.getPayments();
     } catch (e) {
       debugPrint('Error cargando pagos: $e');
     }
@@ -72,7 +67,10 @@ class PaymentProvider extends ChangeNotifier {
     try {
       // Verificar que no exista ya uno pendiente para este evento y deportista
       final existing = _payments.firstWhere(
-        (p) => p.eventId == eventId && p.athleteId == athleteId && p.status == 'pending',
+        (p) =>
+            p.eventId == eventId &&
+            p.athleteId == athleteId &&
+            p.status == 'pending',
         orElse: () => PaymentModel(
           id: '',
           eventId: '',
@@ -114,7 +112,11 @@ class PaymentProvider extends ChangeNotifier {
   }
 
   /// Marcar pago como completado (después del checkout mock)
-  Future<bool> completePayment(String paymentId, {String? reference, String? paymentMethod}) async {
+  Future<bool> completePayment(
+    String paymentId, {
+    String? reference,
+    String? paymentMethod,
+  }) async {
     final index = _payments.indexWhere((p) => p.id == paymentId);
     if (index == -1) return false;
 
@@ -131,9 +133,7 @@ class PaymentProvider extends ChangeNotifier {
   }
 
   Future<void> _savePayments() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(_payments.map((p) => p.toJson()).toList());
-    await prefs.setString('rolla_payments', data);
+    await _repository.savePayments(_payments);
   }
 
   void clear() {

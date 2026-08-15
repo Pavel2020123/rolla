@@ -1,17 +1,26 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/athlete_model.dart';
 import '../models/event_model.dart';
 import '../models/result_model.dart';
-import '../models/user_model.dart';
+import '../repositories/auth_repository.dart';
+import '../repositories/event_repository.dart';
+import '../repositories/local_auth_repository.dart';
+import '../repositories/local_event_repository.dart';
 import '../services/mock_service.dart';
 
 class AthleteProvider extends ChangeNotifier {
+  final AuthRepository _authRepository;
+  final EventRepository _eventRepository;
   AthleteModel? _athlete;
   List<EventModel> _events = [];
   List<ResultModel> _results = [];
   bool _isLoading = false;
+
+  AthleteProvider({
+    AuthRepository? authRepository,
+    EventRepository? eventRepository,
+  }) : _authRepository = authRepository ?? LocalAuthRepository(),
+       _eventRepository = eventRepository ?? LocalEventRepository();
 
   // Getters
   AthleteModel? get athlete => _athlete;
@@ -19,22 +28,17 @@ class AthleteProvider extends ChangeNotifier {
   List<ResultModel> get results => List.unmodifiable(_results);
   bool get isLoading => _isLoading;
 
-  /// Carga inicial de datos priorizando la memoria local (SharedPreferences)
+  /// Carga inicial de datos priorizando el repositorio local
   Future<void> fetchAllData() async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-
       // --- Carga del Perfil: primero intenta usuario real, luego cache, luego mock ---
-      final String? userData = prefs.getString('rolla_user');
-      final String? cachedData = prefs.getString('cached_athlete');
+      final user = await _authRepository.getCurrentUser();
+      final cachedAthlete = await _authRepository.getCachedAthlete();
 
-      if (userData != null) {
-        final user = UserModel.fromJson(
-          jsonDecode(userData) as Map<String, dynamic>,
-        );
+      if (user != null) {
         _athlete = AthleteModel(
           id: user.id,
           firstName: user.firstName.isNotEmpty ? user.firstName : 'Usuario',
@@ -52,18 +56,16 @@ class AthleteProvider extends ChangeNotifier {
           silverMedals: user.silverMedals,
           bronzeMedals: user.bronzeMedals,
         );
-      } else if (cachedData != null) {
-        final Map<String, dynamic> decodedData = jsonDecode(cachedData);
-        _athlete = AthleteModel.fromJson(decodedData);
+      } else if (cachedAthlete != null) {
+        _athlete = cachedAthlete;
       } else {
         _athlete = await MockService.getAthleteProfile();
       }
 
       // --- Carga de Eventos (Cache o Mock) ---
-      final String? cachedEvents = prefs.getString('cached_events');
+      final cachedEvents = await _eventRepository.getCachedEvents();
       if (cachedEvents != null) {
-        final List<dynamic> decodedEvents = jsonDecode(cachedEvents);
-        _events = decodedEvents.map((e) => EventModel.fromJson(e)).toList();
+        _events = cachedEvents;
       } else {
         _events = await MockService.getEvents();
       }
@@ -137,29 +139,24 @@ class AthleteProvider extends ChangeNotifier {
   /// Guarda el perfil del deportista en la memoria del dispositivo
   Future<void> _saveAthleteToCache() async {
     if (_athlete != null) {
-      final prefs = await SharedPreferences.getInstance();
-      final String athleteJson = jsonEncode(_athlete!.toJson());
-      await prefs.setString('cached_athlete', athleteJson);
+      await _authRepository.saveCachedAthlete(_athlete!);
     }
   }
 
   /// Guarda una copia pública del perfil para que entrenadores la vean
   Future<void> _savePublicProfile() async {
-    if (_athlete?.email == null) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      'rolla_public_profile_${_athlete!.email}',
-      jsonEncode(_athlete!.toJson()),
-    );
+    if (_athlete != null) {
+      await _authRepository.savePublicAthlete(_athlete!);
+    }
+  }
+
+  Future<AthleteModel?> getPublicAthlete(String email) {
+    return _authRepository.getPublicAthlete(email);
   }
 
   /// Guarda la lista de eventos en la memoria del dispositivo
   Future<void> _saveEventsToCache() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String eventsJson = jsonEncode(
-      _events.map((e) => e.toJson()).toList(),
-    );
-    await prefs.setString('cached_events', eventsJson);
+    await _eventRepository.saveCachedEvents(_events);
   }
 
   /// Recalcula oro/plata/bronce desde la lista de resultados reales

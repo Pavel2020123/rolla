@@ -1,11 +1,15 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/event_model.dart';
+import '../repositories/event_repository.dart';
+import '../repositories/local_event_repository.dart';
 
 class EventProvider extends ChangeNotifier {
+  final EventRepository _repository;
   List<EventModel> _events = [];
   bool _isLoading = false;
+
+  EventProvider({EventRepository? repository})
+    : _repository = repository ?? LocalEventRepository();
 
   List<EventModel> get events => List.unmodifiable(_events);
   bool get isLoading => _isLoading;
@@ -16,12 +20,7 @@ class EventProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? data = prefs.getString('rolla_events');
-      if (data != null) {
-        final List decoded = jsonDecode(data);
-        _events = decoded.map((e) => EventModel.fromJson(e)).toList();
-      }
+      _events = await _repository.getEvents();
     } catch (e) {
       debugPrint('Error cargando eventos: $e');
     }
@@ -108,9 +107,7 @@ class EventProvider extends ChangeNotifier {
   }
 
   Future<void> _saveEvents() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(_events.map((e) => e.toJson()).toList());
-    await prefs.setString('rolla_events', data);
+    await _repository.saveEvents(_events);
   }
 
   void clear() {

@@ -1,11 +1,15 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/school_model.dart';
+import '../repositories/local_school_repository.dart';
+import '../repositories/school_repository.dart';
 
 class SchoolProvider extends ChangeNotifier {
+  final SchoolRepository _repository;
   SchoolModel? _school;
   bool _isLoading = false;
+
+  SchoolProvider({SchoolRepository? repository})
+    : _repository = repository ?? LocalSchoolRepository();
 
   SchoolModel? get school => _school;
   bool get isLoading => _isLoading;
@@ -17,13 +21,7 @@ class SchoolProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? schoolData = prefs.getString('rolla_school_$ownerId');
-
-      if (schoolData != null) {
-        final decoded = jsonDecode(schoolData);
-        _school = SchoolModel.fromJson(decoded);
-      }
+      _school = await _repository.getSchool(ownerId);
     } catch (e) {
       debugPrint('Error cargando escuela: $e');
     }
@@ -33,7 +31,7 @@ class SchoolProvider extends ChangeNotifier {
   }
 
   /// Crear una nueva escuela
-    Future<bool> createSchool({
+  Future<bool> createSchool({
     required String ownerId,
     required String name,
     required String description,
@@ -60,11 +58,7 @@ class SchoolProvider extends ChangeNotifier {
         ownerId: ownerId,
       );
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-        'rolla_school_$ownerId',
-        jsonEncode(newSchool.toJson()),
-      );
+      await _repository.saveSchool(newSchool);
 
       _school = newSchool;
       _isLoading = false;
@@ -78,15 +72,13 @@ class SchoolProvider extends ChangeNotifier {
     }
   }
 
-
-
   /// Limpiar escuela (útil para logout)
   void clear() {
     _school = null;
     notifyListeners();
   }
 
-    /// Guardar configuración de Wompi para la escuela
+  /// Guardar configuración de Wompi para la escuela
   Future<bool> saveWompiConfig({
     required String publicKey,
     required String privateKey,
@@ -102,11 +94,7 @@ class SchoolProvider extends ChangeNotifier {
         wompiEnabled: true,
       );
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-        'rolla_school_${updated.ownerId}',
-        jsonEncode(updated.toJson()),
-      );
+      await _repository.saveSchool(updated);
 
       _school = updated;
       notifyListeners();
@@ -116,5 +104,4 @@ class SchoolProvider extends ChangeNotifier {
       return false;
     }
   }
-
 }

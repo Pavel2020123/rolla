@@ -1,9 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/school_history_model.dart';
+import '../../providers/school_history_provider.dart';
 
 class SchoolHistoryScreen extends StatefulWidget {
   const SchoolHistoryScreen({super.key});
@@ -31,16 +30,15 @@ class _SchoolHistoryScreenState extends State<SchoolHistoryScreen> {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final String? data = prefs.getString('rolla_school_history_$userId');
+    final historyProvider = context.read<SchoolHistoryProvider>();
+    await historyProvider.loadHistory(userId);
 
-    if (data != null) {
-      final List<dynamic> decoded = jsonDecode(data);
-      _history = decoded.map((e) => SchoolHistoryModel.fromJson(e)).toList()
-        ..sort((a, b) => b.joinedAt.compareTo(a.joinedAt));
-    }
+    if (!mounted) return;
 
-    setState(() => _isLoading = false);
+    setState(() {
+      _history = historyProvider.history;
+      _isLoading = false;
+    });
   }
 
   String _formatDate(DateTime date) {
@@ -80,15 +78,15 @@ class _SchoolHistoryScreenState extends State<SchoolHistoryScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _history.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _history.length,
-                    itemBuilder: (context, index) {
-                      final entry = _history[index];
-                      return _buildHistoryCard(entry);
-                    },
-                  ),
+            ? _buildEmptyState()
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _history.length,
+                itemBuilder: (context, index) {
+                  final entry = _history[index];
+                  return _buildHistoryCard(entry);
+                },
+              ),
       ),
     );
   }
@@ -177,8 +175,9 @@ class _SchoolHistoryScreenState extends State<SchoolHistoryScreen> {
                           color: isCurrent
                               ? const Color(0xFF2563EB)
                               : const Color(0xFF9CA3AF),
-                          fontWeight:
-                              isCurrent ? FontWeight.w600 : FontWeight.normal,
+                          fontWeight: isCurrent
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -186,8 +185,10 @@ class _SchoolHistoryScreenState extends State<SchoolHistoryScreen> {
                 ),
                 if (isCurrent)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFDEF7EC),
                       borderRadius: BorderRadius.circular(12),
@@ -212,8 +213,10 @@ class _SchoolHistoryScreenState extends State<SchoolHistoryScreen> {
                 const SizedBox(width: 6),
                 Text(
                   'Ingreso: ${_formatDate(entry.joinedAt)}',
-                  style:
-                      const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF6B7280),
+                  ),
                 ),
               ],
             ),
@@ -225,8 +228,10 @@ class _SchoolHistoryScreenState extends State<SchoolHistoryScreen> {
                   const SizedBox(width: 6),
                   Text(
                     'Salida: ${_formatDate(entry.leftAt!)}',
-                    style:
-                        const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF6B7280),
+                    ),
                   ),
                 ],
               ),

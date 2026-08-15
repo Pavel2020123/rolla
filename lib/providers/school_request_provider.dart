@@ -1,12 +1,21 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/school_request_model.dart';
-import 'auth_provider.dart';
+import '../repositories/auth_repository.dart';
+import '../repositories/local_auth_repository.dart';
+import '../repositories/local_school_repository.dart';
+import '../repositories/school_repository.dart';
 
 class SchoolRequestProvider extends ChangeNotifier {
+  final SchoolRepository _repository;
+  final AuthRepository _authRepository;
   List<SchoolRequestModel> _requests = [];
   bool _isLoading = false;
+
+  SchoolRequestProvider({
+    SchoolRepository? repository,
+    AuthRepository? authRepository,
+  }) : _repository = repository ?? LocalSchoolRepository(),
+       _authRepository = authRepository ?? LocalAuthRepository();
 
   List<SchoolRequestModel> get requests => List.unmodifiable(_requests);
   List<SchoolRequestModel> get pendingRequests =>
@@ -19,12 +28,7 @@ class SchoolRequestProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? data = prefs.getString('rolla_school_requests');
-      if (data != null) {
-        final List decoded = jsonDecode(data);
-        _requests = decoded.map((e) => SchoolRequestModel.fromJson(e)).toList();
-      }
+      _requests = await _repository.getRequests();
     } catch (e) {
       debugPrint('Error cargando solicitudes: $e');
     }
@@ -89,10 +93,10 @@ class SchoolRequestProvider extends ChangeNotifier {
 
       // NUEVO: Asignar escuela al deportista en su cuenta
       if (request.athleteEmail.isNotEmpty) {
-        await AuthProvider.assignSchoolToUser(
-          request.athleteEmail,
-          request.schoolId,
-          request.schoolName,
+        await _authRepository.assignSchoolToUser(
+          email: request.athleteEmail,
+          schoolId: request.schoolId,
+          schoolName: request.schoolName,
         );
       }
 
@@ -138,7 +142,7 @@ class SchoolRequestProvider extends ChangeNotifier {
         .toList();
   }
 
-    /// Obtener deportistas aceptados en una escuela
+  /// Obtener deportistas aceptados en una escuela
   List<SchoolRequestModel> getAcceptedAthletesForSchool(String schoolId) {
     return _requests
         .where((r) => r.schoolId == schoolId && r.status == 'accepted')
@@ -155,9 +159,7 @@ class SchoolRequestProvider extends ChangeNotifier {
   }
 
   Future<void> _saveRequests() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(_requests.map((r) => r.toJson()).toList());
-    await prefs.setString('rolla_school_requests', data);
+    await _repository.saveRequests(_requests);
   }
 
   void clear() {

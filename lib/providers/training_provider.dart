@@ -1,20 +1,22 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/training_model.dart';
+import '../repositories/local_training_repository.dart';
+import '../repositories/training_repository.dart';
 
 class TrainingProvider extends ChangeNotifier {
+  final TrainingRepository _repository;
   List<TrainingModel> _trainings = [];
   bool _isLoading = false;
+
+  TrainingProvider({TrainingRepository? repository})
+    : _repository = repository ?? LocalTrainingRepository();
 
   List<TrainingModel> get trainings => List.unmodifiable(_trainings);
   bool get isLoading => _isLoading;
 
   /// Entrenamientos de una escuela
   List<TrainingModel> getTrainingsBySchool(String schoolId) {
-    return _trainings
-        .where((t) => t.schoolId == schoolId)
-        .toList()
+    return _trainings.where((t) => t.schoolId == schoolId).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
@@ -22,7 +24,11 @@ class TrainingProvider extends ChangeNotifier {
   List<TrainingModel> getUpcomingTrainings(String schoolId) {
     final now = DateTime.now();
     return _trainings
-        .where((t) => t.schoolId == schoolId && t.date.isAfter(now.subtract(const Duration(days: 1))))
+        .where(
+          (t) =>
+              t.schoolId == schoolId &&
+              t.date.isAfter(now.subtract(const Duration(days: 1))),
+        )
         .toList()
       ..sort((a, b) => a.date.compareTo(b.date));
   }
@@ -32,12 +38,7 @@ class TrainingProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? data = prefs.getString('rolla_trainings');
-      if (data != null) {
-        final List<dynamic> decoded = jsonDecode(data);
-        _trainings = decoded.map((e) => TrainingModel.fromJson(e)).toList();
-      }
+      _trainings = await _repository.getTrainings();
     } catch (e) {
       debugPrint('Error cargando entrenamientos: $e');
     }
@@ -103,9 +104,7 @@ class TrainingProvider extends ChangeNotifier {
   }
 
   Future<void> _saveTrainings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(_trainings.map((t) => t.toJson()).toList());
-    await prefs.setString('rolla_trainings', data);
+    await _repository.saveTrainings(_trainings);
   }
 
   void clear() {

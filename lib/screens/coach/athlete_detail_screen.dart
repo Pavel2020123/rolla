@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../../models/athlete_model.dart';
+import '../../providers/athlete_provider.dart';
 
 class AthleteDetailScreen extends StatefulWidget {
   final String athleteName;
@@ -29,15 +29,15 @@ class _AthleteDetailScreenState extends State<AthleteDetailScreen> {
   }
 
   Future<void> _loadAthleteData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? publicData =
-        prefs.getString('rolla_public_profile_${widget.athleteEmail}');
+    final athleteProvider = context.read<AthleteProvider>();
+    final athlete = await athleteProvider.getPublicAthlete(widget.athleteEmail);
 
-    if (publicData != null) {
-      _athlete = AthleteModel.fromJson(jsonDecode(publicData));
-    }
+    if (!mounted) return;
 
-    setState(() => _isLoading = false);
+    setState(() {
+      _athlete = athlete;
+      _isLoading = false;
+    });
   }
 
   String _getInitials(String name) {
@@ -78,7 +78,9 @@ class _AthleteDetailScreenState extends State<AthleteDetailScreen> {
                         color: const Color(0xFFEFF6FF),
                         borderRadius: BorderRadius.circular(50),
                         border: Border.all(
-                            color: const Color(0xFF2563EB), width: 2),
+                          color: const Color(0xFF2563EB),
+                          width: 2,
+                        ),
                         image: _athlete?.photoUrl != null
                             ? DecorationImage(
                                 image: FileImage(File(_athlete!.photoUrl!)),
@@ -152,25 +154,39 @@ class _AthleteDetailScreenState extends State<AthleteDetailScreen> {
                             ),
                             const SizedBox(height: 16),
                             Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceAround,
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
-                                _buildMedalItem('Oro',
-                                    _athlete!.goldMedals.toString(), const Color(0xFFFBBF24)),
-                                _buildMedalItem('Plata',
-                                    _athlete!.silverMedals.toString(), const Color(0xFFD1D5DB)),
-                                _buildMedalItem('Bronce',
-                                    _athlete!.bronzeMedals.toString(), const Color(0xFFB45309)),
-                                _buildMedalItem('Total',
-                                    _athlete!.totalMedals.toString(), Colors.white),
+                                _buildMedalItem(
+                                  'Oro',
+                                  _athlete!.goldMedals.toString(),
+                                  const Color(0xFFFBBF24),
+                                ),
+                                _buildMedalItem(
+                                  'Plata',
+                                  _athlete!.silverMedals.toString(),
+                                  const Color(0xFFD1D5DB),
+                                ),
+                                _buildMedalItem(
+                                  'Bronce',
+                                  _athlete!.bronzeMedals.toString(),
+                                  const Color(0xFFB45309),
+                                ),
+                                _buildMedalItem(
+                                  'Total',
+                                  _athlete!.totalMedals.toString(),
+                                  Colors.white,
+                                ),
                               ],
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 24),
-                      _buildInfoCard('Participaciones',
-                          _athlete!.participationsCount.toString(), Icons.event),
+                      _buildInfoCard(
+                        'Participaciones',
+                        _athlete!.participationsCount.toString(),
+                        Icons.event,
+                      ),
                       if (_athlete!.birthDate != null)
                         _buildInfoCard(
                           'Fecha de nacimiento',
@@ -188,8 +204,7 @@ class _AthleteDetailScreenState extends State<AthleteDetailScreen> {
                         ),
                         child: const Row(
                           children: [
-                            Icon(Icons.info_outline,
-                                color: Color(0xFFD97706)),
+                            Icon(Icons.info_outline, color: Color(0xFFD97706)),
                             SizedBox(width: 12),
                             Expanded(
                               child: Text(
@@ -247,10 +262,7 @@ class _AthleteDetailScreenState extends State<AthleteDetailScreen> {
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-          ),
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
         ),
       ],
     );

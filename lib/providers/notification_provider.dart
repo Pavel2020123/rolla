@@ -1,13 +1,18 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/notification_model.dart';
+import '../repositories/local_notification_repository.dart';
+import '../repositories/notification_repository.dart';
 
 class NotificationProvider extends ChangeNotifier {
+  final NotificationRepository _repository;
   List<NotificationModel> _notifications = [];
   bool _isLoading = false;
 
-  List<NotificationModel> get notifications => List.unmodifiable(_notifications);
+  NotificationProvider({NotificationRepository? repository})
+    : _repository = repository ?? LocalNotificationRepository();
+
+  List<NotificationModel> get notifications =>
+      List.unmodifiable(_notifications);
   bool get isLoading => _isLoading;
 
   /// Notificaciones no leídas
@@ -15,9 +20,7 @@ class NotificationProvider extends ChangeNotifier {
 
   /// Notificaciones de un usuario específico
   List<NotificationModel> getNotificationsForUser(String userId) {
-    return _notifications
-        .where((n) => n.userId == userId)
-        .toList()
+    return _notifications.where((n) => n.userId == userId).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
@@ -31,12 +34,7 @@ class NotificationProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? data = prefs.getString('rolla_notifications');
-      if (data != null) {
-        final List decoded = jsonDecode(data);
-        _notifications = decoded.map((e) => NotificationModel.fromJson(e)).toList();
-      }
+      _notifications = await _repository.getNotifications();
     } catch (e) {
       debugPrint('Error cargando notificaciones: $e');
     }
@@ -113,9 +111,7 @@ class NotificationProvider extends ChangeNotifier {
   }
 
   Future<void> _saveNotifications() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(_notifications.map((n) => n.toJson()).toList());
-    await prefs.setString('rolla_notifications', data);
+    await _repository.saveNotifications(_notifications);
   }
 
   void clear() {

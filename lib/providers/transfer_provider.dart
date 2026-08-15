@@ -1,28 +1,40 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/transfer_request_model.dart';
-import 'auth_provider.dart';
+import '../repositories/auth_repository.dart';
+import '../repositories/local_auth_repository.dart';
+import '../repositories/local_school_repository.dart';
+import '../repositories/school_repository.dart';
 
 class TransferProvider extends ChangeNotifier {
+  final SchoolRepository _repository;
+  final AuthRepository _authRepository;
   List<TransferRequestModel> _transfers = [];
   bool _isLoading = false;
+
+  TransferProvider({
+    SchoolRepository? repository,
+    AuthRepository? authRepository,
+  }) : _repository = repository ?? LocalSchoolRepository(),
+       _authRepository = authRepository ?? LocalAuthRepository();
 
   List<TransferRequestModel> get transfers => List.unmodifiable(_transfers);
   bool get isLoading => _isLoading;
 
   /// Solicitudes pendientes para una escuela (como escuela actual)
   List<TransferRequestModel> getPendingForCurrentSchool(String schoolId) {
-    return _transfers.where((t) =>
-        t.currentSchoolId == schoolId &&
-        t.status == 'pending').toList();
+    return _transfers
+        .where((t) => t.currentSchoolId == schoolId && t.status == 'pending')
+        .toList();
   }
 
   /// Solicitudes pendientes para una escuela (como escuela destino)
   List<TransferRequestModel> getPendingForTargetSchool(String schoolId) {
-    return _transfers.where((t) =>
-        t.targetSchoolId == schoolId &&
-        t.status == 'accepted_by_current').toList();
+    return _transfers
+        .where(
+          (t) =>
+              t.targetSchoolId == schoolId && t.status == 'accepted_by_current',
+        )
+        .toList();
   }
 
   /// Solicitudes de un deportista
@@ -36,12 +48,7 @@ class TransferProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? data = prefs.getString('rolla_transfers');
-      if (data != null) {
-        final List decoded = jsonDecode(data);
-        _transfers = decoded.map((e) => TransferRequestModel.fromJson(e)).toList();
-      }
+      _transfers = await _repository.getTransfers();
     } catch (e) {
       debugPrint('Error cargando traslados: $e');
     }
@@ -64,7 +71,9 @@ class TransferProvider extends ChangeNotifier {
     try {
       // Verificar que no haya una solicitud pendiente
       final existing = _transfers.firstWhere(
-        (t) => t.athleteId == athleteId && (t.status == 'pending' || t.status == 'accepted_by_current'),
+        (t) =>
+            t.athleteId == athleteId &&
+            (t.status == 'pending' || t.status == 'accepted_by_current'),
         orElse: () => TransferRequestModel(
           id: '',
           athleteId: '',
@@ -151,17 +160,17 @@ class TransferProvider extends ChangeNotifier {
 
       // Si es traslado (no agente libre), asignar nueva escuela
       if (transfer.type == 'transfer' && transfer.targetSchoolId != null) {
-        await AuthProvider.assignSchoolToUser(
-          transfer.athleteEmail,
-          transfer.targetSchoolId!,
-          transfer.targetSchoolName ?? 'Escuela',
+        await _authRepository.assignSchoolToUser(
+          email: transfer.athleteEmail,
+          schoolId: transfer.targetSchoolId!,
+          schoolName: transfer.targetSchoolName ?? 'Escuela',
         );
       } else if (transfer.type == 'free_agent') {
         // Quitar escuela (quedar libre)
-        await AuthProvider.assignSchoolToUser(
-          transfer.athleteEmail,
-          '',
-          '',
+        await _authRepository.assignSchoolToUser(
+          email: transfer.athleteEmail,
+          schoolId: null,
+          schoolName: null,
         );
       }
 
@@ -195,9 +204,7 @@ class TransferProvider extends ChangeNotifier {
   }
 
   Future<void> _saveTransfers() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(_transfers.map((t) => t.toJson()).toList());
-    await prefs.setString('rolla_transfers', data);
+    await _repository.saveTransfers(_transfers);
   }
 
   void clear() {

@@ -1,11 +1,15 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/school_history_model.dart';
+import '../repositories/local_school_repository.dart';
+import '../repositories/school_repository.dart';
 
 class SchoolHistoryProvider extends ChangeNotifier {
+  final SchoolRepository _repository;
   List<SchoolHistoryModel> _history = [];
   bool _isLoading = false;
+
+  SchoolHistoryProvider({SchoolRepository? repository})
+    : _repository = repository ?? LocalSchoolRepository();
 
   List<SchoolHistoryModel> get history => List.unmodifiable(_history);
   bool get isLoading => _isLoading;
@@ -16,13 +20,8 @@ class SchoolHistoryProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? data = prefs.getString('rolla_school_history_$userId');
-      if (data != null) {
-        final List<dynamic> decoded = jsonDecode(data);
-        _history = decoded.map((e) => SchoolHistoryModel.fromJson(e)).toList()
-          ..sort((a, b) => b.joinedAt.compareTo(a.joinedAt));
-      }
+      _history = await _repository.getHistory(userId)
+        ..sort((a, b) => b.joinedAt.compareTo(a.joinedAt));
     } catch (e) {
       debugPrint('Error cargando historial de escuelas: $e');
     }
@@ -84,9 +83,7 @@ class SchoolHistoryProvider extends ChangeNotifier {
   }
 
   Future<void> _saveHistory(String userId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(_history.map((h) => h.toJson()).toList());
-    await prefs.setString('rolla_school_history_$userId', data);
+    await _repository.saveHistory(userId, _history);
   }
 
   void clear() {
