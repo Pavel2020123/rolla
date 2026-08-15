@@ -37,6 +37,7 @@ dependencies:
   provider: ^6.1.5+1
   shared_preferences: ^2.5.5
   image_picker: ^1.1.2      # <-- AGREGA ESTA LÍNEA
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

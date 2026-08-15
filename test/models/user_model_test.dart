@@ -73,5 +73,28 @@ void main() {
       expect(updated.schoolName, isNull);
       expect(updated.photoUrl, isNull);
     });
+
+    test('detecta si la contraseña requiere migración', () {
+      final legacyUser = UserModel(
+        id: 'usr_legacy',
+        fullName: 'Usuario Antiguo',
+        firstName: 'Usuario',
+        lastName: 'Antiguo',
+        email: 'legacy@rolla.test',
+        password: 'texto-plano',
+        createdAt: DateTime.utc(2025),
+      );
+      final hash = List.filled(64, 'a').join();
+      final invalidHash = List.filled(64, 'z').join();
+      final hashedUser = legacyUser.copyWith(password: hash);
+
+      expect(legacyUser.needsPasswordMigration, isTrue);
+      expect(
+        legacyUser.copyWith(password: invalidHash).needsPasswordMigration,
+        isTrue,
+      );
+      expect(hashedUser.needsPasswordMigration, isFalse);
+      expect(hashedUser.passwordMatches(hash), isTrue);
+    });
   });
 }

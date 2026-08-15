@@ -1,12 +1,13 @@
 class UserModel {
   static const Object _unset = Object();
+  static final RegExp _sha256Pattern = RegExp(r'^[a-fA-F0-9]{64}$');
 
   final String id;
   final String fullName;
   final String firstName;
   final String lastName;
   final String email;
-  final String password;
+  final String _password;
   final String? role;
   final String? schoolId;
   final String? schoolName;
@@ -27,7 +28,7 @@ class UserModel {
     required this.firstName,
     required this.lastName,
     required this.email,
-    required this.password,
+    required String password,
     required this.createdAt,
     this.role,
     this.schoolId,
@@ -41,7 +42,12 @@ class UserModel {
     this.goldMedals = 0,
     this.silverMedals = 0,
     this.bronzeMedals = 0,
-  });
+    // ignore: prefer_initializing_formals
+  }) : _password = password;
+
+  bool get needsPasswordMigration => !_sha256Pattern.hasMatch(_password);
+
+  bool passwordMatches(String candidate) => _password == candidate;
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     final fullName = (json['fullName'] as String? ?? '').trim();
@@ -87,7 +93,7 @@ class UserModel {
       'firstName': firstName,
       'lastName': lastName,
       'email': email,
-      'password': password,
+      'password': _password,
       'role': role,
       'schoolId': schoolId,
       'schoolName': schoolName,
@@ -131,7 +137,7 @@ class UserModel {
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       email: email ?? this.email,
-      password: password ?? this.password,
+      password: password ?? _password,
       role: identical(role, _unset) ? this.role : role as String?,
       schoolId: identical(schoolId, _unset)
           ? this.schoolId

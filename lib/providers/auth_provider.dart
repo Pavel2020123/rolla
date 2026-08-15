@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 
@@ -16,6 +17,10 @@ class AuthProvider extends ChangeNotifier {
   String? get schoolId => _user?.schoolId;
   String? get schoolName => _user?.schoolName;
   bool get hasSchool => _user?.schoolId?.isNotEmpty == true;
+
+  String _hashPassword(String password) {
+    return sha256.convert(utf8.encode(password)).toString();
+  }
 
   Future<bool> checkSession() async {
     _isLoading = true;
@@ -66,13 +71,14 @@ class AuthProvider extends ChangeNotifier {
       final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
 
       final now = DateTime.now();
+      final passwordHash = _hashPassword(password);
       final newUser = UserModel(
         id: 'usr_${now.millisecondsSinceEpoch}',
         fullName: fullName.trim(),
         firstName: firstName,
         lastName: lastName,
         email: email,
-        password: password,
+        password: passwordHash,
         createdAt: now,
       );
 
@@ -130,11 +136,15 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      final user = UserModel.fromJson(
+      var user = UserModel.fromJson(
         jsonDecode(userData) as Map<String, dynamic>,
       );
+      final passwordHash = _hashPassword(password);
+      final passwordIsValid = user.needsPasswordMigration
+          ? user.passwordMatches(password)
+          : user.passwordMatches(passwordHash);
 
-      if (user.password != password) {
+      if (!passwordIsValid) {
         _isLoading = false;
         notifyListeners();
         return false;
@@ -144,6 +154,11 @@ class AuthProvider extends ChangeNotifier {
         _isLoading = false;
         notifyListeners();
         return false;
+      }
+
+      if (user.needsPasswordMigration) {
+        user = user.copyWith(password: passwordHash);
+        await prefs.setString('rolla_user_$email', jsonEncode(user.toJson()));
       }
 
       _user = user;

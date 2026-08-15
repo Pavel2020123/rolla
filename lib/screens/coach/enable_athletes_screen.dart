@@ -6,7 +6,6 @@ import '../../providers/school_provider.dart';
 import '../../providers/school_request_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/payment_provider.dart';
-import '../../models/event_model.dart';
 
 class EnableAthletesScreen extends StatefulWidget {
   final String eventId;
@@ -201,7 +200,7 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
                               ),
                               trailing: Switch(
                                 value: isEnabled,
-                                activeColor: const Color(0xFF2563EB),
+                                activeThumbColor: const Color(0xFF2563EB),
                                 onChanged: hasPaid
                                     ? (value) async {
                                         final eventProvider =
@@ -253,7 +252,7 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

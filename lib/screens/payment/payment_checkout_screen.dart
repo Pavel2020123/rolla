@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../models/payment_model.dart';
 import '../../providers/payment_provider.dart';
 import 'package:provider/provider.dart';
@@ -36,11 +35,12 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
   Future<void> _processPayment() async {
     setState(() => _isProcessing = true);
+    final paymentProvider = context.read<PaymentProvider>();
 
     // Simular delay de procesamiento
     await Future.delayed(const Duration(seconds: 2));
 
-    final success = await context.read<PaymentProvider>().completePayment(
+    final success = await paymentProvider.completePayment(
       widget.payment.id,
       reference: 'wompi_ref_${DateTime.now().millisecondsSinceEpoch}',
       paymentMethod: 'card',

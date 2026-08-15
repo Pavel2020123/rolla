@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/event_provider.dart';
 import '../../providers/notification_provider.dart';
-import '../../providers/school_provider.dart';
 import '../../models/event_model.dart';
 
 class AdminPendingEventsScreen extends StatefulWidget {

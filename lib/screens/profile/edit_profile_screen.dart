@@ -217,7 +217,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: DropdownButtonHideUnderline(
         child: DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           decoration: const InputDecoration(border: InputBorder.none),
           icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF6B7280)),
           hint: Text(hint, style: const TextStyle(color: Color(0xFF9CA3AF))),
