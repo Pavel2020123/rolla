@@ -36,7 +36,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       orElse: () => eventProvider.events.first,
     );
 
-    final athleteId = authProvider.user?['id'] ?? '';
+    final athleteId = authProvider.user?.id ?? '';
     final hasPaid = paymentProvider.hasPaid(athleteId, event.id);
     final isRegistered = event.isRegistered;
 
@@ -271,8 +271,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             eventId: event.id,
                             eventTitle: event.title,
                             athleteId: athleteId,
-                            athleteName: authProvider.user?['fullName'] ?? 'Deportista',
-                            athleteEmail: authProvider.user?['email'] ?? '',
+                            athleteName: authProvider.user?.fullName ?? 'Deportista',
+                            athleteEmail: authProvider.user?.email ?? '',
                             schoolId: event.schoolId,
                             amount: event.price,
                           );
@@ -305,7 +305,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 userId: event.creatorId,
                                 title: 'Nueva inscripción pagada',
                                 message:
-                                    '${authProvider.user?['fullName'] ?? 'Un deportista'} pagó \$${event.price.toStringAsFixed(0)} e inscribió a ${event.title}',
+                                    '${authProvider.user?.fullName ?? 'Un deportista'} pagó \$${event.price.toStringAsFixed(0)} e inscribió a ${event.title}',
                                 type: 'payment',
                                 relatedId: event.id,
                               );

@@ -24,7 +24,7 @@ class _SchoolHistoryScreenState extends State<SchoolHistoryScreen> {
 
   Future<void> _loadHistory() async {
     final authProvider = context.read<AuthProvider>();
-    final userId = authProvider.user?['id'] ?? '';
+    final userId = authProvider.user?.id ?? '';
 
     if (userId.isEmpty) {
       setState(() => _isLoading = false);

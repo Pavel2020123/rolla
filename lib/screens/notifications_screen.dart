@@ -58,7 +58,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final notificationProvider = Provider.of<NotificationProvider>(context);
-    final userId = authProvider.user?['id'] ?? '';
+    final userId = authProvider.user?.id ?? '';
 
     final notifications = notificationProvider.getNotificationsForUser(userId);
 

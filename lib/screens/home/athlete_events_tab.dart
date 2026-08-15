@@ -32,7 +32,7 @@ class _AthleteEventsTabState extends State<AthleteEventsTab> {
 
     final hasSchool = authProvider.hasSchool;
     final schoolId = authProvider.schoolId ?? '';
-    final athleteId = authProvider.user?['id'] ?? '';
+    final athleteId = authProvider.user?.id ?? '';
 
     final events = hasSchool && schoolId.isNotEmpty
         ? eventProvider.getEnabledEventsForAthlete(schoolId, athleteId)
@@ -242,9 +242,9 @@ class _AthleteEventsTabState extends State<AthleteEventsTab> {
                         final payment = await paymentProvider.createPayment(
                           eventId: event.id,
                           eventTitle: event.title,
-                          athleteId: authProvider.user?['id'] ?? '',
-                          athleteName: authProvider.user?['fullName'] ?? 'Deportista',
-                          athleteEmail: authProvider.user?['email'] ?? '',
+                          athleteId: authProvider.user?.id ?? '',
+                          athleteName: authProvider.user?.fullName ?? 'Deportista',
+                          athleteEmail: authProvider.user?.email ?? '',
                           schoolId: event.schoolId,
                           amount: event.price,
                         );
@@ -278,7 +278,7 @@ class _AthleteEventsTabState extends State<AthleteEventsTab> {
                             await notificationProvider.addNotification(
                               userId: event.creatorId,
                               title: 'Nueva inscripción pagada',
-                              message: '${authProvider.user?['fullName'] ?? 'Un deportista'} pagó \$${event.price.toStringAsFixed(0)} e inscribió a ${event.title}',
+                              message: '${authProvider.user?.fullName ?? 'Un deportista'} pagó \$${event.price.toStringAsFixed(0)} e inscribió a ${event.title}',
                               type: 'payment',
                               relatedId: event.id,
                             );

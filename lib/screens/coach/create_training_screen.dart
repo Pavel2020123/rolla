@@ -67,8 +67,9 @@ class _CreateTrainingScreenState extends State<CreateTrainingScreen> {
     final notificationProvider = context.read<NotificationProvider>();
     final requestProvider = context.read<SchoolRequestProvider>();
 
-    final coachId = authProvider.user?['id'] ?? '';
+    final coachId = authProvider.user?.id ?? '';
     final schoolId = schoolProvider.school?.id ?? '';
+    final formattedTime = _selectedTime.format(context);
 
     if (schoolId.isEmpty) {
       _showMessage('Error: no se encontró tu escuela');
@@ -99,16 +100,15 @@ class _CreateTrainingScreenState extends State<CreateTrainingScreen> {
         await notificationProvider.addNotification(
           userId: athlete.athleteId,
           title: 'Nuevo entrenamiento',
-          message: 'Tu entrenador programó: $title para el ${_selectedDate.day}/${_selectedDate.month} a las ${_selectedTime.format(context)}',
+          message: 'Tu entrenador programó: $title para el ${_selectedDate.day}/${_selectedDate.month} a las $formattedTime',
           type: 'event',
           relatedId: training.id,
         );
       }
     }
 
-    setState(() => _isLoading = false);
-
     if (!mounted) return;
+    setState(() => _isLoading = false);
 
     if (success) {
       _showMessage('Entrenamiento creado y notificado a los deportistas');

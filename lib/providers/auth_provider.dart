@@ -1,22 +1,21 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/user_model.dart';
 
 class AuthProvider extends ChangeNotifier {
-  Map<String, dynamic>? _user;
+  UserModel? _user;
   String? _role;
   bool _isLoading = false;
 
-  Map<String, dynamic>? get user => _user;
+  UserModel? get user => _user;
   String? get role => _role;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _user != null;
 
-  // NUEVO: datos de escuela del usuario actual
-  String? get schoolId => _user?['schoolId'];
-  String? get schoolName => _user?['schoolName'];
-  bool get hasSchool =>
-      _user?['schoolId'] != null && (_user?['schoolId'] as String?)?.isNotEmpty == true;
+  String? get schoolId => _user?.schoolId;
+  String? get schoolName => _user?.schoolName;
+  bool get hasSchool => _user?.schoolId?.isNotEmpty == true;
 
   Future<bool> checkSession() async {
     _isLoading = true;
@@ -28,7 +27,9 @@ class AuthProvider extends ChangeNotifier {
       final String? userRole = prefs.getString('rolla_role');
 
       if (userData != null && userRole != null) {
-        _user = jsonDecode(userData);
+        _user = UserModel.fromJson(
+          jsonDecode(userData) as Map<String, dynamic>,
+        );
         _role = userRole;
         _isLoading = false;
         notifyListeners();
@@ -43,7 +44,7 @@ class AuthProvider extends ChangeNotifier {
     return false;
   }
 
-    Future<bool> register({
+  Future<bool> register({
     required String fullName,
     required String email,
     required String password,
@@ -64,29 +65,18 @@ class AuthProvider extends ChangeNotifier {
       final firstName = parts.first;
       final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
 
-      final newUser = {
-        'id': 'usr_${DateTime.now().millisecondsSinceEpoch}',
-        'fullName': fullName,
-        'firstName': firstName,
-        'lastName': lastName,
-        'email': email,
-        'password': password,
-        'createdAt': DateTime.now().toIso8601String(),
-        'schoolId': null,
-        'schoolName': null,
-        // Datos deportivos por defecto
-        'category': 'Prejuvenil',
-        'level': 'Principiante',
-        'modality': 'Velocidad',
-        'photoUrl': null,
-        'birthDate': null,
-        'participationsCount': 0,
-        'goldMedals': 0,
-        'silverMedals': 0,
-        'bronzeMedals': 0,
-      };
+      final now = DateTime.now();
+      final newUser = UserModel(
+        id: 'usr_${now.millisecondsSinceEpoch}',
+        fullName: fullName.trim(),
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        password: password,
+        createdAt: now,
+      );
 
-      await prefs.setString('rolla_user_$email', jsonEncode(newUser));
+      await prefs.setString('rolla_user_$email', jsonEncode(newUser.toJson()));
       await prefs.setString('rolla_current_email', email);
 
       _isLoading = false;
@@ -108,14 +98,16 @@ class AuthProvider extends ChangeNotifier {
       if (email != null) {
         final String? userData = prefs.getString('rolla_user_$email');
         if (userData != null) {
-          final user = jsonDecode(userData);
-          user['role'] = role;
+          final storedUser = UserModel.fromJson(
+            jsonDecode(userData) as Map<String, dynamic>,
+          );
+          final user = storedUser.copyWith(role: role);
 
-          await prefs.setString('rolla_user_$email', jsonEncode(user));
+          await prefs.setString('rolla_user_$email', jsonEncode(user.toJson()));
           _user = user;
           _role = role;
 
-          await prefs.setString('rolla_user', jsonEncode(user));
+          await prefs.setString('rolla_user', jsonEncode(user.toJson()));
           await prefs.setString('rolla_role', role);
           notifyListeners();
         }
@@ -125,10 +117,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<bool> login({required String email, required String password}) async {
     _isLoading = true;
     notifyListeners();
 
@@ -141,19 +130,27 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      final user = jsonDecode(userData);
+      final user = UserModel.fromJson(
+        jsonDecode(userData) as Map<String, dynamic>,
+      );
 
-      if (user['password'] != password) {
+      if (user.password != password) {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      if (user.role == null) {
         _isLoading = false;
         notifyListeners();
         return false;
       }
 
       _user = user;
-      _role = user['role'];
+      _role = user.role;
 
-      await prefs.setString('rolla_user', jsonEncode(user));
-      await prefs.setString('rolla_role', user['role']);
+      await prefs.setString('rolla_user', jsonEncode(user.toJson()));
+      await prefs.setString('rolla_role', user.role!);
       await prefs.setString('rolla_current_email', email);
 
       _isLoading = false;
@@ -167,22 +164,24 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Asignar escuela al usuario actual
-    /// Asignar escuela al usuario actual + guardar historial
+  /// Asignar escuela al usuario actual + guardar historial
   Future<void> assignSchool(String schoolId, String schoolName) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final String? email = prefs.getString('rolla_current_email');
 
       if (email != null && _user != null) {
-        final String userId = _user!['id'] ?? '';
+        final String userId = _user!.id;
 
         // Guardar escuela anterior en historial si tenía
-        final String? prevSchoolId = _user!['schoolId'] as String?;
+        final String? prevSchoolId = _user!.schoolId;
         if (prevSchoolId != null && prevSchoolId.isNotEmpty) {
-          final String? prevSchoolName = _user!['schoolName'] as String?;
-          final String? existingHistory = prefs.getString('rolla_school_history_$userId');
-          List<dynamic> history = existingHistory != null ? jsonDecode(existingHistory) : [];
+          final String? existingHistory = prefs.getString(
+            'rolla_school_history_$userId',
+          );
+          List<dynamic> history = existingHistory != null
+              ? jsonDecode(existingHistory)
+              : [];
 
           // Cerrar entrada anterior
           for (var entry in history) {
@@ -202,11 +201,18 @@ class AuthProvider extends ChangeNotifier {
             'reason': null,
           });
 
-          await prefs.setString('rolla_school_history_$userId', jsonEncode(history));
+          await prefs.setString(
+            'rolla_school_history_$userId',
+            jsonEncode(history),
+          );
         } else {
           // Primera vez que entra a una escuela
-          final String? existingHistory = prefs.getString('rolla_school_history_$userId');
-          List<dynamic> history = existingHistory != null ? jsonDecode(existingHistory) : [];
+          final String? existingHistory = prefs.getString(
+            'rolla_school_history_$userId',
+          );
+          List<dynamic> history = existingHistory != null
+              ? jsonDecode(existingHistory)
+              : [];
           history.add({
             'id': 'hist_${DateTime.now().millisecondsSinceEpoch}',
             'schoolId': schoolId,
@@ -215,14 +221,16 @@ class AuthProvider extends ChangeNotifier {
             'leftAt': null,
             'reason': null,
           });
-          await prefs.setString('rolla_school_history_$userId', jsonEncode(history));
+          await prefs.setString(
+            'rolla_school_history_$userId',
+            jsonEncode(history),
+          );
         }
 
-        _user!['schoolId'] = schoolId;
-        _user!['schoolName'] = schoolName;
+        _user = _user!.copyWith(schoolId: schoolId, schoolName: schoolName);
 
-        await prefs.setString('rolla_user', jsonEncode(_user));
-        await prefs.setString('rolla_user_$email', jsonEncode(_user));
+        await prefs.setString('rolla_user', jsonEncode(_user!.toJson()));
+        await prefs.setString('rolla_user_$email', jsonEncode(_user!.toJson()));
         notifyListeners();
       }
     } catch (e) {
@@ -230,20 +238,23 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Quitar escuela (quedar libre)
-    /// Quitar escuela (quedar libre) + guardar historial
+  /// Quitar escuela (quedar libre) + guardar historial
   Future<void> leaveSchool() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final String? email = prefs.getString('rolla_current_email');
 
       if (email != null && _user != null) {
-        final String userId = _user!['id'] ?? '';
-        final String? prevSchoolId = _user!['schoolId'] as String?;
+        final String userId = _user!.id;
+        final String? prevSchoolId = _user!.schoolId;
 
         if (prevSchoolId != null && prevSchoolId.isNotEmpty) {
-          final String? existingHistory = prefs.getString('rolla_school_history_$userId');
-          List<dynamic> history = existingHistory != null ? jsonDecode(existingHistory) : [];
+          final String? existingHistory = prefs.getString(
+            'rolla_school_history_$userId',
+          );
+          List<dynamic> history = existingHistory != null
+              ? jsonDecode(existingHistory)
+              : [];
 
           for (var entry in history) {
             if (entry['leftAt'] == null) {
@@ -252,14 +263,16 @@ class AuthProvider extends ChangeNotifier {
             }
           }
 
-          await prefs.setString('rolla_school_history_$userId', jsonEncode(history));
+          await prefs.setString(
+            'rolla_school_history_$userId',
+            jsonEncode(history),
+          );
         }
 
-        _user!['schoolId'] = null;
-        _user!['schoolName'] = null;
+        _user = _user!.copyWith(schoolId: null, schoolName: null);
 
-        await prefs.setString('rolla_user', jsonEncode(_user));
-        await prefs.setString('rolla_user_$email', jsonEncode(_user));
+        await prefs.setString('rolla_user', jsonEncode(_user!.toJson()));
+        await prefs.setString('rolla_user_$email', jsonEncode(_user!.toJson()));
         notifyListeners();
       }
     } catch (e) {
@@ -278,15 +291,22 @@ class AuthProvider extends ChangeNotifier {
       final String? userData = prefs.getString('rolla_user_$userEmail');
 
       if (userData != null) {
-        final user = jsonDecode(userData);
-        user['schoolId'] = schoolId;
-        user['schoolName'] = schoolName;
-        await prefs.setString('rolla_user_$userEmail', jsonEncode(user));
+        final storedUser = UserModel.fromJson(
+          jsonDecode(userData) as Map<String, dynamic>,
+        );
+        final user = storedUser.copyWith(
+          schoolId: schoolId.isEmpty ? null : schoolId,
+          schoolName: schoolName.isEmpty ? null : schoolName,
+        );
+        await prefs.setString(
+          'rolla_user_$userEmail',
+          jsonEncode(user.toJson()),
+        );
 
         // Si es el usuario actualmente logueado, actualizar sesión activa
         final currentEmail = prefs.getString('rolla_current_email');
         if (currentEmail == userEmail) {
-          await prefs.setString('rolla_user', jsonEncode(user));
+          await prefs.setString('rolla_user', jsonEncode(user.toJson()));
         }
         return true;
       }
@@ -312,7 +332,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-    /// Actualizar datos deportivos del perfil
+  /// Actualizar datos deportivos del perfil
   Future<void> updateAthleteProfile({
     String? firstName,
     String? lastName,
@@ -327,24 +347,25 @@ class AuthProvider extends ChangeNotifier {
       final String? email = prefs.getString('rolla_current_email');
 
       if (email != null && _user != null) {
-        if (firstName != null) _user!['firstName'] = firstName;
-        if (lastName != null) _user!['lastName'] = lastName;
-        if (firstName != null || lastName != null) {
-          _user!['fullName'] = '${_user!['firstName']} ${_user!['lastName']}'.trim();
-        }
-        if (category != null) _user!['category'] = category;
-        if (level != null) _user!['level'] = level;
-        if (modality != null) _user!['modality'] = modality;
-        if (photoUrl != null) _user!['photoUrl'] = photoUrl;
-        if (birthDate != null) _user!['birthDate'] = birthDate.toIso8601String();
+        final updatedFirstName = firstName ?? _user!.firstName;
+        final updatedLastName = lastName ?? _user!.lastName;
+        _user = _user!.copyWith(
+          firstName: updatedFirstName,
+          lastName: updatedLastName,
+          fullName: '$updatedFirstName $updatedLastName'.trim(),
+          category: category,
+          level: level,
+          modality: modality,
+          photoUrl: photoUrl ?? _user!.photoUrl,
+          birthDate: birthDate ?? _user!.birthDate,
+        );
 
-        await prefs.setString('rolla_user', jsonEncode(_user));
-        await prefs.setString('rolla_user_$email', jsonEncode(_user));
+        await prefs.setString('rolla_user', jsonEncode(_user!.toJson()));
+        await prefs.setString('rolla_user_$email', jsonEncode(_user!.toJson()));
         notifyListeners();
       }
     } catch (e) {
       debugPrint('Error actualizando perfil deportivo: $e');
     }
   }
-
 }

@@ -69,9 +69,9 @@ class _FindSchoolScreenState extends State<FindSchoolScreen> {
     final requestProvider =
         Provider.of<SchoolRequestProvider>(context, listen: false);
 
-    final athleteId = authProvider.user?['id'] ?? '';
-    final athleteName = authProvider.user?['fullName'] ?? 'Deportista';
-    final athleteEmail = authProvider.user?['email'] ?? '';
+    final athleteId = authProvider.user?.id ?? '';
+    final athleteName = authProvider.user?.fullName ?? 'Deportista';
+    final athleteEmail = authProvider.user?.email ?? '';
 
     if (athleteId.isEmpty || athleteEmail.isEmpty) {
       _showMessage('Error: no se pudo identificar al deportista');
@@ -105,7 +105,7 @@ class _FindSchoolScreenState extends State<FindSchoolScreen> {
   Widget build(BuildContext context) {
     final requestProvider = Provider.of<SchoolRequestProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
-    final athleteId = authProvider.user?['id'] ?? '';
+    final athleteId = authProvider.user?.id ?? '';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),

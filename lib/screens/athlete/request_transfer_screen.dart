@@ -30,9 +30,9 @@ class _RequestTransferScreenState extends State<RequestTransferScreen> {
     final transferProvider = Provider.of<TransferProvider>(context, listen: false);
     final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
 
-    final athleteId = authProvider.user?['id'] ?? '';
-    final athleteName = authProvider.user?['fullName'] ?? '';
-    final athleteEmail = authProvider.user?['email'] ?? '';
+    final athleteId = authProvider.user?.id ?? '';
+    final athleteName = authProvider.user?.fullName ?? '';
+    final athleteEmail = authProvider.user?.email ?? '';
     final currentSchoolId = authProvider.schoolId ?? '';
     final currentSchoolName = authProvider.schoolName ?? '';
 
@@ -54,9 +54,8 @@ class _RequestTransferScreenState extends State<RequestTransferScreen> {
       type: type,
     );
 
-    setState(() => _isLoading = false);
-
     if (!mounted) return;
+    setState(() => _isLoading = false);
 
     if (success) {
       // Notificar al entrenador de la escuela actual
@@ -68,6 +67,7 @@ class _RequestTransferScreenState extends State<RequestTransferScreen> {
         type: 'transfer',
       );
 
+      if (!mounted) return;
       _showMessage('Solicitud enviada correctamente');
       Navigator.pop(context);
     } else {

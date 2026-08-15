@@ -13,7 +13,6 @@ import 'create_event_screen.dart';
 import 'athlete_detail_screen.dart';
 import 'wompi_config_screen.dart';
 import 'payments_received_screen.dart';
-import 'transfer_requests_screen.dart';
 import 'coach_events_screen.dart';
 import 'school_requests_screen.dart';
 import 'coach_trainings_screen.dart';
@@ -33,7 +32,7 @@ class _CoachMainScreenState extends State<CoachMainScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final ownerId = authProvider.user?['id'] ?? '';
+      final ownerId = authProvider.user?.id ?? '';
       if (ownerId.isNotEmpty) {
         Provider.of<SchoolProvider>(context, listen: false).loadSchool(ownerId);
       }
@@ -87,7 +86,7 @@ class _CoachMainScreenState extends State<CoachMainScreen> {
             ),
             child: Consumer<NotificationProvider>(
               builder: (context, notifProvider, child) {
-                final userId = Provider.of<AuthProvider>(context).user?['id'] ?? '';
+                final userId = Provider.of<AuthProvider>(context).user?.id ?? '';
                 final unreadCount = notifProvider.getUnreadCountForUser(userId);
 
                 return BottomNavigationBar(
@@ -241,7 +240,7 @@ class _CoachHomeTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final schoolProvider = Provider.of<SchoolProvider>(context);
-    final userName = authProvider.user?['fullName'] ?? 'Entrenador';
+    final userName = authProvider.user?.fullName ?? 'Entrenador';
     final school = schoolProvider.school;
 
     return SafeArea(
@@ -1098,8 +1097,8 @@ class _CoachProfileTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final schoolProvider = Provider.of<SchoolProvider>(context);
-    final userName = authProvider.user?['fullName'] ?? 'Entrenador';
-    final userEmail = authProvider.user?['email'] ?? '';
+    final userName = authProvider.user?.fullName ?? 'Entrenador';
+    final userEmail = authProvider.user?.email ?? '';
 
     return SafeArea(
       child: SingleChildScrollView(

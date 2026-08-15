@@ -51,7 +51,7 @@ class _CreateSchoolScreenState extends State<CreateSchoolScreen> {
     setState(() => _isLoading = true);
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final ownerId = authProvider.user?['id'] ?? '';
+    final ownerId = authProvider.user?.id ?? '';
 
     final schoolProvider = Provider.of<SchoolProvider>(context, listen: false);
     final success = await schoolProvider.createSchool(

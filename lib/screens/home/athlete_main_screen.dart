@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 // Providers
 import '../../providers/athlete_provider.dart';
 import '../../providers/notification_provider.dart';
-import '../../providers/auth_provider.dart'; // Importante para obtener el user['id']
+import '../../providers/auth_provider.dart';
 
 // Pantallas (Tabs)
 import '../notifications_screen.dart';
@@ -68,7 +68,7 @@ class _AthleteMainScreenState extends State<AthleteMainScreen> {
         child: Consumer<NotificationProvider>(
           builder: (context, notifProvider, child) {
             // Obtenemos el ID del usuario actual de forma segura
-            final userId = Provider.of<AuthProvider>(context).user?['id'] ?? '';
+            final userId = Provider.of<AuthProvider>(context).user?.id ?? '';
             final unreadCount = notifProvider.getUnreadCountForUser(userId);
 
             return BottomNavigationBar(

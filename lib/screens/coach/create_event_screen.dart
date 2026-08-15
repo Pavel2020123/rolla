@@ -94,7 +94,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     final schoolProvider = Provider.of<SchoolProvider>(context, listen: false);
     final eventProvider = Provider.of<EventProvider>(context, listen: false);
 
-    final creatorId = authProvider.user?['id'] ?? '';
+    final creatorId = authProvider.user?.id ?? '';
     final schoolId = schoolProvider.school?.id ?? authProvider.schoolId ?? '';
 
     if (schoolId.isEmpty) {

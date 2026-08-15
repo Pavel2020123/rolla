@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/training_provider.dart';
-import '../../providers/notification_provider.dart';
 import '../../models/training_model.dart';
 
 class AthleteTrainingsTab extends StatefulWidget {
@@ -42,7 +41,7 @@ class _AthleteTrainingsTabState extends State<AthleteTrainingsTab> {
 
     final hasSchool = authProvider.hasSchool;
     final schoolId = authProvider.schoolId ?? '';
-    final athleteId = authProvider.user?['id'] ?? '';
+    final athleteId = authProvider.user?.id ?? '';
 
     final trainings = hasSchool && schoolId.isNotEmpty
         ? trainingProvider.getUpcomingTrainings(schoolId)

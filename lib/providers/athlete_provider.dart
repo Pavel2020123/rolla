@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/athlete_model.dart';
 import '../models/event_model.dart';
 import '../models/result_model.dart';
+import '../models/user_model.dart';
 import '../services/mock_service.dart';
 
 class AthleteProvider extends ChangeNotifier {
@@ -31,25 +32,25 @@ class AthleteProvider extends ChangeNotifier {
       final String? cachedData = prefs.getString('cached_athlete');
 
       if (userData != null) {
-        final user = jsonDecode(userData);
+        final user = UserModel.fromJson(
+          jsonDecode(userData) as Map<String, dynamic>,
+        );
         _athlete = AthleteModel(
-          id: user['id'] ?? 'ath_${DateTime.now().millisecondsSinceEpoch}',
-          firstName: user['firstName'] ?? user['fullName']?.split(' ').first ?? 'Usuario',
-          lastName: user['lastName'] ?? (user['fullName']?.split(' ').length > 1 
-            ? user['fullName'].split(' ').sublist(1).join(' ') 
-            : ''),
-          role: user['role'] ?? 'Deportista',
-          schoolName: user['schoolName'] ?? 'Sin escuela',
-          category: user['category'] ?? 'Prejuvenil',
-          level: user['level'] ?? 'Principiante',
-          modality: user['modality'],
-          photoUrl: user['photoUrl'],
-          birthDate: user['birthDate'] != null ? DateTime.tryParse(user['birthDate']) : null,
-          email: user['email'],
-          participationsCount: user['participationsCount'] ?? 0,
-          goldMedals: user['goldMedals'] ?? 0,
-          silverMedals: user['silverMedals'] ?? 0,
-          bronzeMedals: user['bronzeMedals'] ?? 0,
+          id: user.id,
+          firstName: user.firstName.isNotEmpty ? user.firstName : 'Usuario',
+          lastName: user.lastName,
+          role: user.role ?? 'Deportista',
+          schoolName: user.schoolName ?? 'Sin escuela',
+          category: user.category,
+          level: user.level,
+          modality: user.modality,
+          photoUrl: user.photoUrl,
+          birthDate: user.birthDate,
+          email: user.email,
+          participationsCount: user.participationsCount,
+          goldMedals: user.goldMedals,
+          silverMedals: user.silverMedals,
+          bronzeMedals: user.bronzeMedals,
         );
       } else if (cachedData != null) {
         final Map<String, dynamic> decodedData = jsonDecode(cachedData);
@@ -86,7 +87,9 @@ class AthleteProvider extends ChangeNotifier {
     if (index != -1) {
       final currentEvent = _events[index];
       _events[index] = currentEvent.copyWith(
-        status: !currentEvent.isRegistered ? 'Inscrito' : 'Inscripciones Abiertas',
+        status: !currentEvent.isRegistered
+            ? 'Inscrito'
+            : 'Inscripciones Abiertas',
         isRegistered: !currentEvent.isRegistered,
       );
 
@@ -153,7 +156,9 @@ class AthleteProvider extends ChangeNotifier {
   /// Guarda la lista de eventos en la memoria del dispositivo
   Future<void> _saveEventsToCache() async {
     final prefs = await SharedPreferences.getInstance();
-    final String eventsJson = jsonEncode(_events.map((e) => e.toJson()).toList());
+    final String eventsJson = jsonEncode(
+      _events.map((e) => e.toJson()).toList(),
+    );
     await prefs.setString('cached_events', eventsJson);
   }
 

@@ -6,7 +6,6 @@ import '../../providers/school_provider.dart';
 import '../../providers/school_request_provider.dart';
 import '../auth/splash_screen.dart';
 import 'admin_pending_events_screen.dart';
-import 'admin_schools_screen.dart';
 
 class AdminMainScreen extends StatefulWidget {
   const AdminMainScreen({super.key});
@@ -381,7 +380,7 @@ class _AdminProfileTab extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    authProvider.user?['fullName'] ?? 'Administrador',
+                    authProvider.user?.fullName ?? 'Administrador',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
