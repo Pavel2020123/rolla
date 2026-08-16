@@ -31,4 +31,7 @@ abstract class AuthRepository {
   Future<void> savePublicAthlete(AthleteModel athlete);
 
   Future<AthleteModel?> getPublicAthlete(String email);
+
+  Future<bool> updatePassword(String email, String newPasswordHash);  
+
 }

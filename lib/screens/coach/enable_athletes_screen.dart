@@ -6,6 +6,7 @@ import '../../providers/school_provider.dart';
 import '../../providers/school_request_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/payment_provider.dart';
+import '../../services/pdf_service.dart';
 
 class EnableAthletesScreen extends StatefulWidget {
   final String eventId;
@@ -25,6 +26,36 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
       Provider.of<SchoolRequestProvider>(context, listen: false).loadRequests();
       Provider.of<PaymentProvider>(context, listen: false).loadPayments();
     });
+  }
+
+  Future<void> _exportEventPdf(BuildContext context) async {
+    final paymentProvider = Provider.of<PaymentProvider>(context, listen: false);
+    final eventProvider = Provider.of<EventProvider>(context, listen: false);
+    final event = eventProvider.events.firstWhere(
+      (e) => e.id == widget.eventId,
+      orElse: () => eventProvider.events.first,
+    );
+
+    final acceptedAthletes = Provider.of<SchoolRequestProvider>(context, listen: false)
+        .getAcceptedAthletesForSchool(
+          Provider.of<AuthProvider>(context, listen: false).schoolId ?? '',
+        );
+
+    final rows = acceptedAthletes.map((a) {
+      return {
+        'name': a.athleteName,
+        'payment': paymentProvider.hasPaid(a.athleteId, event.id) ? 'yes' : 'no',
+        'enabled': event.enabledAthletes.contains(a.athleteId) ? 'yes' : 'no',
+      };
+    }).toList();
+
+    await PdfService.generateAndShareEventPdf(
+      title: event.title,
+      date: event.date,
+      location: event.location,
+      price: event.price,
+      athletes: rows,
+    );
   }
 
   @override
@@ -64,6 +95,12 @@ class _EnableAthletesScreenState extends State<EnableAthletesScreen> {
           ),
         ),
         iconTheme: const IconThemeData(color: Color(0xFF1F2937)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined, color: Color(0xFFEF4444)),
+            onPressed: () => _exportEventPdf(context),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(

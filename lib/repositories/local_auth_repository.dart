@@ -133,4 +133,22 @@ class LocalAuthRepository implements AuthRepository {
     if (data == null) return null;
     return UserModel.fromJson(jsonDecode(data) as Map<String, dynamic>);
   }
+
+    @override
+  Future<bool> updatePassword(String email, String newPasswordHash) async {
+    final user = await getUser(email);
+    if (user == null) return false;
+
+    final updatedUser = user.copyWith(password: newPasswordHash);
+    await saveUser(updatedUser);
+
+    // Si es el usuario actual, actualizar sesión también
+    final currentEmail = await getCurrentEmail();
+    if (currentEmail == email) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_currentUserKey, jsonEncode(updatedUser.toJson()));
+    }
+    return true;
+  }
+
 }

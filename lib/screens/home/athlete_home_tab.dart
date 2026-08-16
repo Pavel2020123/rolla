@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:rolla/screens/athlete/find_school_screen.dart';
 import '../../providers/athlete_provider.dart';
 import '../../providers/auth_provider.dart';
+import 'athlete_calendar_screen.dart';
 
 class AthleteHomeTab extends StatelessWidget {
   const AthleteHomeTab({super.key});
@@ -192,6 +193,64 @@ class AthleteHomeTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 32),
+                          // Mi Agenda
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AthleteCalendarScreen(),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.calendar_month_outlined, color: Color(0xFF2563EB)),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mi Agenda',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: Color(0xFF1F2937),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Ver mis eventos y entrenamientos',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF6B7280),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF9CA3AF)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
 
             // Próximo evento
             const Text(

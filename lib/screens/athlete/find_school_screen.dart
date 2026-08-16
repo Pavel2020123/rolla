@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/school_provider.dart';
 import '../../providers/school_request_provider.dart';
+import '../../models/school_model.dart';
 
 class FindSchoolScreen extends StatefulWidget {
   const FindSchoolScreen({super.key});
@@ -13,12 +15,24 @@ class FindSchoolScreen extends StatefulWidget {
 class _FindSchoolScreenState extends State<FindSchoolScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  List<SchoolModel> _schools = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<SchoolRequestProvider>(context, listen: false).loadRequests();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Provider.of<SchoolRequestProvider>(context, listen: false).loadRequests();
+      await _loadSchools();
+    });
+  }
+
+  Future<void> _loadSchools() async {
+    final schoolProvider = Provider.of<SchoolProvider>(context, listen: false);
+    final schools = await schoolProvider.getAllSchools();
+    setState(() {
+      _schools = schools;
+      _isLoading = false;
     });
   }
 
@@ -28,43 +42,16 @@ class _FindSchoolScreenState extends State<FindSchoolScreen> {
     super.dispose();
   }
 
-  List<Map<String, String>> get _availableSchools => [
-        {
-          'id': 'sch_demo_001',
-          'name': 'Rolla Skating Academy',
-          'city': 'Valledupar',
-          'address': 'Calle 10 # 15-20',
-        },
-        {
-          'id': 'sch_demo_002',
-          'name': 'Valledupar Skate Club',
-          'city': 'Valledupar',
-          'address': 'Avenida Circunvalar',
-        },
-        {
-          'id': 'sch_demo_003',
-          'name': 'Patines del Norte',
-          'city': 'Bogotá',
-          'address': 'Carrera 7 # 45-30',
-        },
-        {
-          'id': 'sch_demo_004',
-          'name': 'Club de Patinaje Costa Caribe',
-          'city': 'Santa Marta',
-          'address': 'Calle 22 # 8-15',
-        },
-      ];
-
-  List<Map<String, String>> get _filteredSchools {
-    if (_searchQuery.isEmpty) return _availableSchools;
-    return _availableSchools.where((s) {
+  List<SchoolModel> get _filteredSchools {
+    if (_searchQuery.isEmpty) return _schools;
+    return _schools.where((s) {
       final query = _searchQuery.toLowerCase();
-      return s['name']!.toLowerCase().contains(query) ||
-          s['city']!.toLowerCase().contains(query);
+      return s.name.toLowerCase().contains(query) ||
+          s.city.toLowerCase().contains(query);
     }).toList();
   }
 
-  Future<void> _requestJoin(Map<String, String> school) async {
+  Future<void> _requestJoin(SchoolModel school) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final requestProvider =
         Provider.of<SchoolRequestProvider>(context, listen: false);
@@ -82,14 +69,14 @@ class _FindSchoolScreenState extends State<FindSchoolScreen> {
       athleteId: athleteId,
       athleteName: athleteName,
       athleteEmail: athleteEmail,
-      schoolId: school['id']!,
-      schoolName: school['name']!,
+      schoolId: school.id,
+      schoolName: school.name,
     );
 
     if (!mounted) return;
 
     if (success) {
-      _showMessage('Solicitud enviada a ${school['name']}');
+      _showMessage('Solicitud enviada a ${school.name}');
     } else {
       _showMessage('Ya tienes una solicitud pendiente para esta escuela');
     }
@@ -151,106 +138,109 @@ class _FindSchoolScreenState extends State<FindSchoolScreen> {
               ),
             ),
             Expanded(
-              child: _filteredSchools.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No se encontraron escuelas',
-                        style: TextStyle(color: Color(0xFF6B7280)),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _filteredSchools.length,
-                      itemBuilder: (context, index) {
-                        final school = _filteredSchools[index];
-                        final hasPending = requestProvider.hasPendingRequest(
-                          athleteId,
-                          school['id']!,
-                        );
-
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filteredSchools.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No se encontraron escuelas',
+                            style: TextStyle(color: Color(0xFF6B7280)),
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _filteredSchools.length,
+                          itemBuilder: (context, index) {
+                            final school = _filteredSchools[index];
+                            final hasPending = requestProvider.hasPendingRequest(
+                              athleteId,
+                              school.id,
+                            );
+
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFEFF6FF),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Icon(
-                                        Icons.school,
-                                        color: Color(0xFF2563EB),
-                                      ),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEFF6FF),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: const Icon(
+                                            Icons.school,
+                                            color: Color(0xFF2563EB),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                school.name,
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                '📍 ${school.city} • ${school.address}',
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  color: Color(0xFF6B7280),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            school['name']!,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            '📍 ${school['city']} • ${school['address']}',
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              color: Color(0xFF6B7280),
-                                            ),
-                                          ),
-                                        ],
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: hasPending
+                                            ? null
+                                            : () => _requestJoin(school),
+                                        icon: Icon(
+                                          hasPending
+                                              ? Icons.hourglass_top
+                                              : Icons.send,
+                                          size: 18,
+                                        ),
+                                        label: Text(
+                                          hasPending
+                                              ? 'Solicitud enviada'
+                                              : 'Solicitar ingreso',
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: hasPending
+                                              ? const Color(0xFF9CA3AF)
+                                              : const Color(0xFF2563EB),
+                                          foregroundColor: Colors.white,
+                                          disabledBackgroundColor:
+                                              const Color(0xFFD1D5DB),
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton.icon(
-                                    onPressed: hasPending
-                                        ? null
-                                        : () => _requestJoin(school),
-                                    icon: Icon(
-                                      hasPending
-                                          ? Icons.hourglass_top
-                                          : Icons.send,
-                                      size: 18,
-                                    ),
-                                    label: Text(
-                                      hasPending
-                                          ? 'Solicitud enviada'
-                                          : 'Solicitar ingreso',
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: hasPending
-                                          ? const Color(0xFF9CA3AF)
-                                          : const Color(0xFF2563EB),
-                                      foregroundColor: Colors.white,
-                                      disabledBackgroundColor:
-                                          const Color(0xFFD1D5DB),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                              ),
+                            );
+                          },
+                        ),
             ),
           ],
         ),

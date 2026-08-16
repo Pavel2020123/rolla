@@ -104,4 +104,9 @@ class SchoolProvider extends ChangeNotifier {
       return false;
     }
   }
+
+    Future<List<SchoolModel>> getAllSchools() async {
+    return await _repository.getAllSchools();
+  }
+
 }

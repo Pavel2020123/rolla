@@ -19,4 +19,6 @@ abstract class SchoolRepository {
   Future<List<TransferRequestModel>> getTransfers();
 
   Future<void> saveTransfers(List<TransferRequestModel> transfers);
+
+  Future<List<SchoolModel>> getAllSchools();
 }

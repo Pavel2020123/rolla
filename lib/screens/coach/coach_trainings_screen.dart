@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/pdf_service.dart'; // 3.1 — Import agregado
 import '../../providers/school_provider.dart';
 import '../../providers/training_provider.dart';
 import '../../providers/school_request_provider.dart';
@@ -26,6 +27,40 @@ class _CoachTrainingsScreenState extends State<CoachTrainingsScreen> {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  // 3.3 — Método para exportar la lista a PDF
+  Future<void> _exportTrainingPdf(BuildContext context, TrainingModel training) async {
+    final requestProvider = Provider.of<SchoolRequestProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final schoolId = authProvider.schoolId ?? '';
+
+    final athletes = schoolId.isNotEmpty
+        ? requestProvider.getAcceptedAthletesForSchool(schoolId)
+        : <dynamic>[];
+
+        final List<Map<String, String>> rows = athletes.map((a) {
+      String status;
+      if (training.isConfirmed(a.athleteId)) {
+        status = 'confirmed';
+      } else if (training.isDeclined(a.athleteId)) {
+        status = 'declined';
+      } else {
+        status = 'pending';
+      }
+      return <String, String>{
+        'name': a.athleteName,
+        'status': status,
+      };
+    }).toList();
+
+    await PdfService.generateAndShareTrainingPdf(
+      title: training.title,
+      date: training.date,
+      time: training.time,
+      location: training.location,
+      athletes: rows,
+    );
   }
 
   @override
@@ -241,6 +276,23 @@ class _CoachTrainingsScreenState extends State<CoachTrainingsScreen> {
                     _buildStatColumn('No van', training.declinedCount, const Color(0xFFEF4444)),
                     _buildStatColumn('Sin responder', pending, const Color(0xFF9CA3AF)),
                   ],
+                ),
+                // 3.2 — Botón para exportar PDF agregado justo después de la fila de stats
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _exportTrainingPdf(context, training),
+                    icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                    label: const Text('Exportar lista de asistencia (PDF)'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFEF4444),
+                      side: const BorderSide(color: Color(0xFFEF4444)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:flutter/foundation.dart';
 import '../models/school_history_model.dart';
 import '../models/school_model.dart';
 import '../models/school_request_model.dart';
@@ -102,4 +102,26 @@ class LocalSchoolRepository implements SchoolRepository {
       jsonEncode(transfers.map((transfer) => transfer.toJson()).toList()),
     );
   }
+
+    @override
+  Future<List<SchoolModel>> getAllSchools() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys();
+    final schools = <SchoolModel>[];
+
+    for (final key in keys) {
+      if (key.startsWith('rolla_school_')) {
+        final data = prefs.getString(key);
+        if (data != null) {
+          try {
+            schools.add(SchoolModel.fromJson(jsonDecode(data) as Map<String, dynamic>));
+          } catch (e) {
+            debugPrint('Error decodificando escuela $key: $e');
+          }
+        }
+      }
+    }
+    return schools;
+  }
+
 }

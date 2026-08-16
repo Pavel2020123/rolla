@@ -27,6 +27,7 @@ class AuthProvider extends ChangeNotifier {
   String? get schoolId => _user?.schoolId;
   String? get schoolName => _user?.schoolName;
   bool get hasSchool => _user?.schoolId?.isNotEmpty == true;
+  AuthRepository get repository => _repository;
 
   String _hashPassword(String password) {
     return sha256.convert(utf8.encode(password)).toString();
@@ -296,4 +297,18 @@ class AuthProvider extends ChangeNotifier {
       debugPrint('Error actualizando perfil deportivo: $e');
     }
   }
+
+    /// Actualizar contraseña (recuperación)
+  Future<bool> updatePassword(String email, String newPassword) async {
+    try {
+      final passwordHash = _hashPassword(newPassword);
+      return await _repository.updatePassword(email, passwordHash);
+    } catch (e) {
+      debugPrint('Error actualizando contraseña: $e');
+      return false;
+    }
+  }
+
+
+
 }
