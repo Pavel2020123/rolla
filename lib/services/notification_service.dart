@@ -127,8 +127,13 @@ class NotificationService {
   }
 
   Future<void> subscribeToTopic(String topic) async {
+  try {
     await _messaging.subscribeToTopic(topic);
+    debugPrint('✅ Subscribing to topic: $topic');
+  } catch (e) {
+    debugPrint('❌ Error subscribing to topic $topic: $e');
   }
+}
 
   Future<void> unsubscribeFromTopic(String topic) async {
     await _messaging.unsubscribeFromTopic(topic);
