@@ -120,6 +120,7 @@ class PdfService {
     final file = File('${output.path}/asistencia_$safeTitle.pdf');
     await file.writeAsBytes(await pdf.save());
 
+    // ignore: deprecated_member_use
     await Share.shareXFiles(
       [XFile(file.path)],
       text: 'Lista de asistencia - $title',
@@ -238,6 +239,7 @@ class PdfService {
     final file = File('${output.path}/inscritos_$safeTitle.pdf');
     await file.writeAsBytes(await pdf.save());
 
+    // ignore: deprecated_member_use
     await Share.shareXFiles(
       [XFile(file.path)],
       text: 'Lista de inscritos - $title',

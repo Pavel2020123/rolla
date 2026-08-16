@@ -1,12 +1,15 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:crypto/crypto.dart';
+
 import '../models/school_history_model.dart';
 import '../models/user_model.dart';
 import '../repositories/auth_repository.dart';
 import '../repositories/local_auth_repository.dart';
 import '../repositories/local_school_repository.dart';
 import '../repositories/school_repository.dart';
+import '../services/notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _repository;
@@ -15,9 +18,11 @@ class AuthProvider extends ChangeNotifier {
   String? _role;
   bool _isLoading = false;
 
-  AuthProvider({AuthRepository? repository, SchoolRepository? schoolRepository})
-    : _repository = repository ?? LocalAuthRepository(),
-      _schoolRepository = schoolRepository ?? LocalSchoolRepository();
+  AuthProvider({
+    AuthRepository? repository,
+    SchoolRepository? schoolRepository,
+  })  : _repository = repository ?? LocalAuthRepository(),
+        _schoolRepository = schoolRepository ?? LocalSchoolRepository();
 
   UserModel? get user => _user;
   String? get role => _role;
@@ -74,10 +79,12 @@ class AuthProvider extends ChangeNotifier {
 
       final parts = fullName.trim().split(' ');
       final firstName = parts.first;
-      final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      final lastName =
+          parts.length > 1 ? parts.sublist(1).join(' ') : '';
 
       final now = DateTime.now();
       final passwordHash = _hashPassword(password);
+
       final newUser = UserModel(
         id: 'usr_${now.millisecondsSinceEpoch}',
         fullName: fullName.trim(),
@@ -108,13 +115,16 @@ class AuthProvider extends ChangeNotifier {
 
       if (email != null) {
         final storedUser = await _repository.getUser(email);
+
         if (storedUser != null) {
           final user = storedUser.copyWith(role: role);
 
           await _repository.saveUser(user);
           await _repository.saveSession(user);
+
           _user = user;
           _role = role;
+
           notifyListeners();
         }
       }
@@ -123,12 +133,16 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> login({required String email, required String password}) async {
+  Future<bool> login({
+    required String email,
+    required String password,
+  }) async {
     _isLoading = true;
     notifyListeners();
 
     try {
       var user = await _repository.getUser(email);
+
       if (user == null) {
         _isLoading = false;
         notifyListeners();
@@ -136,6 +150,7 @@ class AuthProvider extends ChangeNotifier {
       }
 
       final passwordHash = _hashPassword(password);
+
       final passwordIsValid = user.needsPasswordMigration
           ? user.passwordMatches(password)
           : user.passwordMatches(passwordHash);
@@ -162,6 +177,24 @@ class AuthProvider extends ChangeNotifier {
 
       await _repository.saveSession(user);
 
+      // Suscribir a notificaciones push
+      if (_user != null) {
+        final notifService = NotificationService();
+
+        await notifService.subscribeToTopic('all_users');
+
+        await notifService.subscribeToTopic(
+          'role_${_user!.role}',
+        );
+
+        if (_user!.schoolId != null &&
+            _user!.schoolId!.isNotEmpty) {
+          await notifService.subscribeToTopic(
+            'school_${_user!.schoolId}',
+          );
+        }
+      }
+
       _isLoading = false;
       notifyListeners();
       return true;
@@ -174,20 +207,27 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Asignar escuela al usuario actual + guardar historial
-  Future<void> assignSchool(String schoolId, String schoolName) async {
+  Future<void> assignSchool(
+    String schoolId,
+    String schoolName,
+  ) async {
     try {
       final email = await _repository.getCurrentEmail();
 
       if (email != null && _user != null) {
         final userId = _user!.id;
-        final history = await _schoolRepository.getHistory(userId);
+        final history =
+            await _schoolRepository.getHistory(userId);
         final now = DateTime.now();
 
         // Guardar escuela anterior en historial si tenía
         final prevSchoolId = _user!.schoolId;
+
         if (prevSchoolId != null && prevSchoolId.isNotEmpty) {
           // Cerrar entrada anterior
-          for (var index = 0; index < history.length; index++) {
+          for (var index = 0;
+              index < history.length;
+              index++) {
             if (history[index].isCurrent) {
               history[index] = history[index].copyWith(
                 leftAt: now,
@@ -205,11 +245,20 @@ class AuthProvider extends ChangeNotifier {
             joinedAt: now,
           ),
         );
-        await _schoolRepository.saveHistory(userId, history);
 
-        _user = _user!.copyWith(schoolId: schoolId, schoolName: schoolName);
+        await _schoolRepository.saveHistory(
+          userId,
+          history,
+        );
+
+        _user = _user!.copyWith(
+          schoolId: schoolId,
+          schoolName: schoolName,
+        );
+
         await _repository.saveUser(_user!);
         await _repository.saveSession(_user!);
+
         notifyListeners();
       }
     } catch (e) {
@@ -227,9 +276,14 @@ class AuthProvider extends ChangeNotifier {
         final prevSchoolId = _user!.schoolId;
 
         if (prevSchoolId != null && prevSchoolId.isNotEmpty) {
-          final history = await _schoolRepository.getHistory(userId);
+          final history =
+              await _schoolRepository.getHistory(userId);
+
           final now = DateTime.now();
-          for (var index = 0; index < history.length; index++) {
+
+          for (var index = 0;
+              index < history.length;
+              index++) {
             if (history[index].isCurrent) {
               history[index] = history[index].copyWith(
                 leftAt: now,
@@ -237,12 +291,21 @@ class AuthProvider extends ChangeNotifier {
               );
             }
           }
-          await _schoolRepository.saveHistory(userId, history);
+
+          await _schoolRepository.saveHistory(
+            userId,
+            history,
+          );
         }
 
-        _user = _user!.copyWith(schoolId: null, schoolName: null);
+        _user = _user!.copyWith(
+          schoolId: null,
+          schoolName: null,
+        );
+
         await _repository.saveUser(_user!);
         await _repository.saveSession(_user!);
+
         notifyListeners();
       }
     } catch (e) {
@@ -252,10 +315,31 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> logout() async {
     try {
+      // Desuscribir de notificaciones push
+      if (_user != null) {
+        final notifService = NotificationService();
+
+        await notifService.unsubscribeFromTopic(
+          'all_users',
+        );
+
+        await notifService.unsubscribeFromTopic(
+          'role_${_user!.role}',
+        );
+
+        if (_user!.schoolId != null &&
+            _user!.schoolId!.isNotEmpty) {
+          await notifService.unsubscribeFromTopic(
+            'school_${_user!.schoolId}',
+          );
+        }
+      }
+
       await _repository.clearSession();
 
       _user = null;
       _role = null;
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error en logout: $e');
@@ -276,12 +360,17 @@ class AuthProvider extends ChangeNotifier {
       final email = await _repository.getCurrentEmail();
 
       if (email != null && _user != null) {
-        final updatedFirstName = firstName ?? _user!.firstName;
-        final updatedLastName = lastName ?? _user!.lastName;
+        final updatedFirstName =
+            firstName ?? _user!.firstName;
+
+        final updatedLastName =
+            lastName ?? _user!.lastName;
+
         _user = _user!.copyWith(
           firstName: updatedFirstName,
           lastName: updatedLastName,
-          fullName: '$updatedFirstName $updatedLastName'.trim(),
+          fullName:
+              '$updatedFirstName $updatedLastName'.trim(),
           category: category,
           level: level,
           modality: modality,
@@ -291,6 +380,7 @@ class AuthProvider extends ChangeNotifier {
 
         await _repository.saveUser(_user!);
         await _repository.saveSession(_user!);
+
         notifyListeners();
       }
     } catch (e) {
@@ -298,17 +388,21 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-    /// Actualizar contraseña (recuperación)
-  Future<bool> updatePassword(String email, String newPassword) async {
+  /// Actualizar contraseña (recuperación)
+  Future<bool> updatePassword(
+    String email,
+    String newPassword,
+  ) async {
     try {
       final passwordHash = _hashPassword(newPassword);
-      return await _repository.updatePassword(email, passwordHash);
+
+      return await _repository.updatePassword(
+        email,
+        passwordHash,
+      );
     } catch (e) {
       debugPrint('Error actualizando contraseña: $e');
       return false;
     }
   }
-
-
-
 }

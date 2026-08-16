@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "142837479458",
+    "project_id": "rolla-app-91cd2",
+    "storage_bucket": "rolla-app-91cd2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:142837479458:android:5a6f5eb6e126ddce35b27b",
+        "android_client_info": {
+          "package_name": "com.example.rolla"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZ5tywPPt_fY4PR9403SM0agTyh5SuDpY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
