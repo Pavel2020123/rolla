@@ -9,7 +9,7 @@ import 'admin_pending_events_screen.dart';
 
 class AdminMainScreen extends StatefulWidget {
   const AdminMainScreen({super.key});
-
+ //no hice nada hoy
   @override
   State<AdminMainScreen> createState() => _AdminMainScreenState();
 }
